@@ -1,0 +1,6 @@
+{
+    "target_fn_id": "xsinx",
+    "n_samples": 50,
+    "noise_std": 0.1,
+    "save_path": "test/testdata/test_data.csv"
+}

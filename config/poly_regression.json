@@ -1,0 +1,7 @@
+{
+    "lam": 1e-8,
+    "gamma": 10,
+    "p": 8,
+    "save_fig_path": "results/plots/poly_plot.png",
+    "func_id": "xsinx"
+}
