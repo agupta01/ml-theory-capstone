@@ -1,4 +1,0 @@
-{
-    "dockerhub-id": "agupta010/arunav-ma3",
-    "build-script": "python run.py"
-}

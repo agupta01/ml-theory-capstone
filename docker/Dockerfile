@@ -21,7 +21,7 @@ USER jovyan
 
 # RUN conda install -y scikit-learn
 
-RUN pip install --no-cache-dir geopandas babypandas
+RUN pip install --no-cache-dir scikit-learn tensorflow
 
 # Override command to disable running jupyter notebook at launch
 CMD ["/bin/bash"]

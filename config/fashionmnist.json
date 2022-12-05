@@ -1,0 +1,14 @@
+{
+    "kernel_type": "laplace",
+    "print_result": true,
+    "data": {
+        "dataset": "fashionmnist",
+        "subset": 0.1,
+        "pos_class": 1,
+        "neg_class": 4
+    },
+    "model": {
+        "gamma": 0.00128,
+        "return_metrics": true
+    }
+}

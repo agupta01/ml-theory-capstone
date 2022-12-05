@@ -1,0 +1,14 @@
+{
+    "kernel_type": "laplace",
+    "print_result": true,
+    "data": {
+        "dataset": "mnist",
+        "subset": 0.1,
+        "pos_class": 1,
+        "neg_class": 8
+    },
+    "model": {
+        "gamma": 0.00128,
+        "return_metrics": true
+    }
+}

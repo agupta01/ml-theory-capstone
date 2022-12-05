@@ -37,3 +37,8 @@ Phi_poly_scaled = lambda X, p, gamma=gamma: (
     Phi_poly(X, p)*
     np.array([np.sqrt(math.comb(p, i)/gamma**i) for i in range(p+1)])
 )
+
+K_laplace = lambda x, z, gamma=gamma: np.exp(-np.linalg.norm(x-z, axis=-1) * gamma)
+
+def K_laplace_mat(x, z, gamma=gamma):
+    return np.exp(-np.linalg.norm(x[:,None,:]-z[None,:,:], ord=1, axis=-1) * gamma)

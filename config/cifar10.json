@@ -1,0 +1,14 @@
+{
+    "kernel_type": "laplace",
+    "print_result": true,
+    "data": {
+        "dataset": "cifar10",
+        "subset": 0.05,
+        "pos_class": 3,
+        "neg_class": 5
+    },
+    "model": {
+        "gamma": 0.0000128,
+        "return_metrics": true
+    }
+}
