@@ -50,3 +50,5 @@ This code produces pairwise distance kernels for use in kernel machines for bina
 has $n$ examples, your kernel will be $n \times n$! My 2018 Macbook Pro with 16GB RAM can only handle $n \approx 1000$ 
 before it starts to freeze up on itself. Use the `subset` parameter in the config file, do the math, and you may 
 avoid bricking your laptop for 5 minutes.
+
+If you're using DSMLP, subset = 0.01 should work for most datasets.
