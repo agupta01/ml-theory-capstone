@@ -1,11 +1,7 @@
 from logging import Logger
 
 import numpy as np
-<<<<<<< HEAD
-import tensorflow as tf
-=======
 import src.utils as utils
->>>>>>> 2db638e456a6bb2fb87d85d53f39bd8718e09f3f
 from sklearn.datasets import make_classification
 import hashlib
 import src.utils as utils
