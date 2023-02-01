@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 from src.main import classify, poly_regression
+from src.rfm import train_rfm, test_rfm
 from src.etl import generate_test_data, load_data
 
 parser = argparse.ArgumentParser()
@@ -9,7 +10,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] \t %(message)s", datefmt="%b %d %Y %I:%M%p")
 
 # add required argument
-parser.add_argument("task", help="task to run", choices=["test", "test-data", "mnist", "cifar10", "fashionmnist"])
+parser.add_argument("task", help="task to run", choices=["test", "test-data", "mnist", "cifar10", "fashionmnist", "rfm"])
 parser.add_argument("--verbose", help="Set logging to DEBUG", action="store_true")
 
 # parse arguments
@@ -45,3 +46,16 @@ elif args.task == "mnist" or args.task == "cifar10" or args.task == "fashionmnis
 
     if config["print_result"]:
         logger.info(result)
+
+elif args.task == "rfm":
+    # generate data    
+    train_data = generate_test_data(target_fn_id="xsinx", n_samples=100, noise_std=0.1)
+    test_data = generate_test_data(target_fn_id="xsinx", n_samples=100, noise_std=0.1)
+    X_train, y_train = train_data[:, :-1], train_data[:, -1]
+    X_test, y_test = test_data[:, :-1], test_data[:, -1]
+        
+    # train and test model
+    config = json.load(open(f"config/{args.task}_naive.json"))
+    alpha, M = train_rfm(X_train, y_train, **config)
+    test_rfm(X_train, X_test, y_test, alpha, M, config["L"])
+    

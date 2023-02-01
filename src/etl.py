@@ -1,15 +1,7 @@
 from logging import Logger
 import numpy as np
 import src.utils as utils
-import tensorflow as tf
 from sklearn.datasets import make_classification
-
-
-DATASETS = {
-    "mnist": tf.keras.datasets.mnist,
-    "cifar10": tf.keras.datasets.cifar10,
-    "fashionmnist": tf.keras.datasets.fashion_mnist,
-}
 
 TARGET_FNS = {
     "xsinx": utils.target_xsinx
@@ -144,6 +136,13 @@ def load_data(dataset: str, logger: Logger, **kwargs):
     np.ndarray
         Loaded dataset.
     """
+    import tensorflow as tf
+    
+    DATASETS = {
+        "mnist": tf.keras.datasets.mnist,
+        "cifar10": tf.keras.datasets.cifar10,
+        "fashionmnist": tf.keras.datasets.fashion_mnist,
+    }
     if dataset in DATASETS:
         (x_train, y_train), (x_test, y_test) = DATASETS[dataset].load_data()
     else:
