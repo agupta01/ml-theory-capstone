@@ -1,4 +1,4 @@
-# Benchmarking Kernel Machines on Image Datasets (Working Title)
+# Benchmarking Kernel Machines on Text Datasets
 Data Science Capstone Project advised by Mikhail Belkin.
 
 ## How to use
