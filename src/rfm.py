@@ -29,8 +29,7 @@ def train_rfm(X_train, y_train, L=1., lam=1e-3, T=10):
     for t in range(T):
         K_train = utils.K_M(X_train, X_train, M, L=L)
         alpha = y_train @ np.linalg.pinv(K_train + lam*np.eye(n))
-        grad = utils.grad_laplace_mat(alpha, X_train, X_train, M, L=L)
-        M = np.mean(np.swapaxes(grad, 1, 2) @ grad, axis=0)
+        M = utils.grad_laplace_mat(X_train, alpha, L, M)
     
     # evaluate
     y_hat = alpha @ utils.K_M(X_train, X_train, M, L)
@@ -65,3 +64,10 @@ def plot_M(M, fpath=None):
         return fig
     else:
         fig.savefig(fpath)
+        
+def plot_results(X, y, y_hat, fpath, test=False):
+    """Save prediction to path."""
+    plt.scatter(X, y, label=f"{'Test' if test else 'Train'} True")
+    plt.scatter(X, y_hat, label=f"{'Test' if test else 'Train'} Predicted")
+    plt.legend()
+    plt.savefig(fpath)

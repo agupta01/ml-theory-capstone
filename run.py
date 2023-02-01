@@ -1,8 +1,9 @@
 import argparse
 import json
 import logging
+from src.utils import K_M
 from src.main import classify, poly_regression
-from src.rfm import train_rfm, test_rfm
+from src.rfm import train_rfm, test_rfm, plot_results
 from src.etl import generate_test_data, load_data
 
 parser = argparse.ArgumentParser()
@@ -54,8 +55,18 @@ elif args.task == "rfm":
     X_train, y_train = train_data[:, :-1], train_data[:, -1]
     X_test, y_test = test_data[:, :-1], test_data[:, -1]
         
-    # train and test model
+    # load config
     config = json.load(open(f"config/{args.task}_naive.json"))
+    L = config["L"]
+    
+    # train and test model
     alpha, M = train_rfm(X_train, y_train, **config)
-    test_rfm(X_train, X_test, y_test, alpha, M, config["L"])
+    test_rfm(X_train, X_test, y_test, alpha, M, L)
+    
+    # plot results
+    y_hat = alpha @ K_M(X_train, X_train, M, L)
+    plot_results(X_train, y_train, y_hat, "results/plots/trainrfm.png")
+    
+    y_hat = alpha @ K_M(X_train, X_test, M, L)
+    plot_results(X_test, y_test, y_hat, "results/plots/testrfm.png", test=True)
     

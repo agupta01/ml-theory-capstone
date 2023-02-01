@@ -66,7 +66,72 @@ def K_M(x, z, M, L):
     pairwise_distances = np.clip(pairwise_distances, 0, np.inf)
     return np.exp(pairwise_distances * -(1./L))
 
+def grad_laplace_mat(X, sol, L, P, batch_size=2):
+    M = 0.
+    
+    num_samples = 20000
+    indices = np.random.randint(len(X), size=num_samples)
+    
+    if len(X) > len(indices):
+        x = X[indices, :]
+    else:
+        x = X
+    
+    K = K_M(X, x, P, L)
+    
+    dist = mnorm(X, x, P, squared=False)
+    dist = np.where(dist < 1e-4, np.zeros(1, dtype=np.float64), dist)
+    
+    K = K/dist
+    K[K == float('inf')] = 0.
+    
+    sol = sol[:, None]
+    a1 = sol.T
+    
+    n, d = X.shape
+    n, c = sol.shape
+    m, d = x.shape
+    
+    a1 = a1.reshape(n, c, 1)
+    X1 = (X @ P).reshape(n, 1, d)
+    step1 = a1 @ X1
+    del a1, X1
+    step1 = step1.reshape(-1, c*d)
+
+    step2 = K.T @ step1
+    del step1
+
+    step2 = step2.reshape(-1, c, d)
+
+    a2 = sol.T
+    step3 = (a2 @ K).T
+
+    del K, a2
+
+    step3 = step3.reshape(m, c, 1)
+    x1 = (x @ P).reshape(m, 1, d)
+    step3 = step3 @ x1
+
+    G = (step2 - step3) * -1/L
+
+    M = 0.
+
+    bs = batch_size
+    batches = np.split(G, bs)
+    for i in range(len(batches)):
+        grad = batches[i]
+        gradT = np.swapaxes(grad, 1, 2)
+        M += np.sum(gradT @ grad, axis=0)
+        del grad, gradT
+    M /= len(G)
+
+    return M
+    
+    
+'''
 def grad_laplace_mat(a, x, z, M, L): # (n, d), (m, d), (d, d) --> (n, m, d)
+    num_samples = 20000
+    
     dist = mnorm(x, z, M, squared=False)
     dist = np.where(dist < 1e-4, np.zeros(1, dtype=np.float16), dist)
     
@@ -93,6 +158,7 @@ def grad_laplace_mat(a, x, z, M, L): # (n, d), (m, d), (d, d) --> (n, m, d)
     G = (step2 - step3) * -1/L
     
     return G
+'''
 
 def mse(y_true, y_pred, squared=True):
     if squared:
