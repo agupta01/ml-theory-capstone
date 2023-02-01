@@ -1,8 +1,14 @@
 from logging import Logger
+
 import numpy as np
-import src.utils as utils
 import tensorflow as tf
 from sklearn.datasets import make_classification
+import hashlib
+import src.utils as utils
+import os
+import requests
+import json
+from bs4 import BeautifulSoup
 
 
 DATASETS = {
@@ -149,3 +155,76 @@ def load_data(dataset: str, logger: Logger, **kwargs):
     else:
         raise ValueError("Unknown dataset: {}".format(dataset))
     return preproc_data(x_train, y_train, x_test, y_test, kwargs['subset'], kwargs['pos_class'], kwargs['neg_class'], logger)
+
+def make_dataset(url:str, download:bool=True):
+    
+    if "data" not in os.listdir():
+        os.makedirs("data")
+    
+    hval = str(hashlib.sha256(url.encode()).hexdigest())
+    
+    if "download_log" in os.listdir():
+        with open("download_log", "r") as file:
+            
+            if str(hval) in file.readlines():
+                print(f"Dataset already downloaded: download_log -> {hval}")
+                return False
+    else:
+        with open("download_log", "w") as file:
+            file.write(hval)
+    
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, 'html.parser') 
+    else:
+        print("Failed to retrieve data from website")
+    
+    res = [i.text.strip().replace("\n","").replace("\r","") for i in soup.find_all('p')]
+    
+    fname =  res[1] + ".txt"
+    
+    res = "\n".join(res)
+    
+    with open(os.path.join("data/",fname), "w") as file:
+        file.write(res)
+    
+    print("Dataset successfully downloaded")
+    return True
+
+def build_vocab():
+    #lowercase
+    alphabet_dict = {chr(i + 97): i + 1 for i in range(26)}
+    alphabet_dict.update({chr(i + 65): i + 27 for i in range(26)})
+
+    special_characters = [".", ",", "!", "?", "'", ":", ";", "-", "_"]
+    special_characters_dict = {char: i + 53 for i, char in enumerate(special_characters)}
+    alphabet_dict.update(special_characters_dict)
+
+    alphabet_dict[" "] = 0
+    return alphabet_dict
+
+def tokenizer(fp:str):
+    vocab = build_vocab()
+    
+    with open(fp) as file:
+        data = file.readlines()
+    res = np.array([])
+
+    for i in data:
+        if not i:
+            continue
+        
+        tokens = np.array([0]*128)
+        for j in range(len(tokens)):
+            if j >= len(i):
+                break
+            if i[j] in vocab:
+                tokens[j] = vocab[i[j]]
+        
+        
+        res = np.append(res,tokens)
+
+    res.reshape(len(data),128)
+    
+    return res
