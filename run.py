@@ -1,7 +1,7 @@
 import argparse
 import json
 import logging
-from src.utils import K_M
+from src.utils import K_M, mse
 from src.main import classify, poly_regression
 from src.rfm import train_rfm, test_rfm, plot_results
 from src.etl import generate_test_data, load_data
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] \t %(message)s", datefmt="%b %d %Y %I:%M%p")
 
 # add required argument
-parser.add_argument("task", help="task to run", choices=["test", "test-data", "mnist", "cifar10", "fashionmnist", "rfm"])
+parser.add_argument("task", help="task to run", choices=["test", "test-data", "mnist", "cifar10", "fashionmnist", "rfm", "rfmpowertest"])
 parser.add_argument("--verbose", help="Set logging to DEBUG", action="store_true")
 
 # parse arguments
@@ -50,8 +50,8 @@ elif args.task == "mnist" or args.task == "cifar10" or args.task == "fashionmnis
 
 elif args.task == "rfm":
     # generate data    
-    train_data = generate_test_data(target_fn_id="xsinx", n_samples=100, noise_std=0.1)
-    test_data = generate_test_data(target_fn_id="xsinx", n_samples=100, noise_std=0.1)
+    train_data = generate_test_data(target_fn_id="xsinx", n_samples=1000, noise_std=0.1)
+    test_data = generate_test_data(target_fn_id="xsinx", n_samples=200, noise_std=0.1)
     X_train, y_train = train_data[:, :-1], train_data[:, -1]
     X_test, y_test = test_data[:, :-1], test_data[:, -1]
         
@@ -69,4 +69,21 @@ elif args.task == "rfm":
     
     y_hat = alpha @ K_M(X_train, X_test, M, L)
     plot_results(X_test, y_test, y_hat, "results/plots/testrfm.png", test=True)
+    
+elif args.task == "rfmpowertest":
+    # generate data    
+    train_data = generate_test_data(target_fn_id="xsinx", n_samples=1000, noise_std=0.1)
+    test_data = generate_test_data(target_fn_id="xsinx", n_samples=200, noise_std=0.1)
+    X_train, y_train = train_data[:, :-1], train_data[:, -1]
+    X_test, y_test = test_data[:, :-1], test_data[:, -1]
+    
+    # load config
+    config = json.load(open(f"config/rfm_naive.json"))
+    L = config["L"]
+    
+    # increase power of M successively
+    for i in range(1, 4):
+        logging.info(f"M Power Test @ {i}")
+        alpha, M = train_rfm(X_train, y_train, power=i, **config)
+        test_rfm(X_train, X_test, y_test, alpha, M, L)
     
