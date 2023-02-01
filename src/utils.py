@@ -59,29 +59,30 @@ def K_laplace_mat(x, z, gamma=gamma):
 # RFM utils
 
 
-def mnorm(x, z, M, squared=True):  # (n, d), (m,d), (d,d) --> (n, m)
+def mnorm(x, z, M, power=1, squared=True):  # (n, d), (m,d), (d,d) --> (n, m)
+    M_alt = M**power
     # implements |x-z|_M^2 between pairs from x and z
-    x_norm = ((x @ M) * x).sum(axis=1, keepdims=True)
+    x_norm = ((x @ M_alt) * x).sum(axis=1, keepdims=True)
     if x is z:
         z_norm = x_norm
     else:
-        z_norm = ((z @ M) * z).sum(axis=1, keepdims=True)
+        z_norm = ((z @ M_alt) * z).sum(axis=1, keepdims=True)
 
     z_norm = z_norm.reshape(1, -1)
 
-    distances = (x @ (M @ z.T) * -2) + x_norm + z_norm
+    distances = (x @ (M_alt @ z.T) * -2) + x_norm + z_norm
     if not squared:
         distances = np.sqrt(np.clip(distances, 0, np.inf))
     return distances
 
 
-def K_M(x, z, M, L):
-    pairwise_distances = mnorm(x, z, M, squared=False)
+def K_M(x, z, M, L, power=1):
+    pairwise_distances = mnorm(x, z, M, power, squared=False)
     pairwise_distances = np.clip(pairwise_distances, 0, np.inf)
     return np.exp(pairwise_distances * -(1.0 / L))
 
 
-def grad_laplace_mat(X, sol, L, P, batch_size=2):
+def grad_laplace_mat(X, sol, L, P, power=1, batch_size=2):
     M = 0.0
 
     num_samples = 20000
@@ -92,9 +93,9 @@ def grad_laplace_mat(X, sol, L, P, batch_size=2):
     else:
         x = X
 
-    K = K_M(X, x, P, L)
+    K = K_M(X, x, P, L, power)
 
-    dist = mnorm(X, x, P, squared=False)
+    dist = mnorm(X, x, P, power, squared=False)
     dist = np.where(dist < 1e-4, np.zeros(1, dtype=np.float64), dist)
 
     K = K / dist

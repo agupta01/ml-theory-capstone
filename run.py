@@ -101,4 +101,4 @@ elif args.task == "rfmpowertest":
     for i in range(1, 4):
         logging.info(f"M Power Test @ {i}")
         alpha, M = train_rfm(X_train, y_train, power=i, **config)
-        test_rfm(X_train, X_test, y_test, alpha, M, L)
+        test_rfm(X_train, X_test, y_test, alpha, M, L, power=i)
