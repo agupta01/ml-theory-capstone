@@ -1,7 +1,11 @@
 from logging import Logger
 
 import numpy as np
+<<<<<<< HEAD
 import tensorflow as tf
+=======
+import src.utils as utils
+>>>>>>> 2db638e456a6bb2fb87d85d53f39bd8718e09f3f
 from sklearn.datasets import make_classification
 import hashlib
 import src.utils as utils
@@ -9,13 +13,6 @@ import os
 import requests
 import json
 from bs4 import BeautifulSoup
-
-
-DATASETS = {
-    "mnist": tf.keras.datasets.mnist,
-    "cifar10": tf.keras.datasets.cifar10,
-    "fashionmnist": tf.keras.datasets.fashion_mnist,
-}
 
 TARGET_FNS = {
     "xsinx": utils.target_xsinx
@@ -150,6 +147,13 @@ def load_data(dataset: str, logger: Logger, **kwargs):
     np.ndarray
         Loaded dataset.
     """
+    import tensorflow as tf
+    
+    DATASETS = {
+        "mnist": tf.keras.datasets.mnist,
+        "cifar10": tf.keras.datasets.cifar10,
+        "fashionmnist": tf.keras.datasets.fashion_mnist,
+    }
     if dataset in DATASETS:
         (x_train, y_train), (x_test, y_test) = DATASETS[dataset].load_data()
     else:
