@@ -254,16 +254,21 @@ def tokenizer(fp: str):
     for i in data:
         if not i:
             continue
+    
+    
+    
+    for j in range(len(tokens)):
+        
+        tokens = np.array([0]*32)
+        
+        if j >= len(i):
+            break
+        
+        if i[j] in vocab:
+            tokens[j] = 1
+    
+        res = np.append(res,tokens)
 
-        tokens = np.array([0] * 128)
-        for j in range(len(tokens)):
-            if j >= len(i):
-                break
-            if i[j] in vocab:
-                tokens[j] = vocab[i[j]]
-
-        res = np.append(res, tokens)
-
-    res.reshape(len(data), 128)
+    res = res.reshape(int(len(res)/len(tokens)),int(len(tokens)))
 
     return res
