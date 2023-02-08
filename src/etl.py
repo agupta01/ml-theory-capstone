@@ -244,7 +244,7 @@ def build_vocab():
     return alphabet_dict
 
 
-def tokenizer(fp: str):
+def tokenizer(fp: str, tokensize:int=32):
     vocab = build_vocab()
 
     with open(fp) as file:
@@ -256,19 +256,19 @@ def tokenizer(fp: str):
             continue
     
     
-    
-    for j in range(len(tokens)):
+        tokens = np.array([0]*tokensize)
         
-        tokens = np.array([0]*32)
+        for j in range(tokensize):
+            
+            if j >= len(i):
+                break
+            
+            if i[j] in vocab:
+                tokens[j] = 1
         
-        if j >= len(i):
-            break
-        
-        if i[j] in vocab:
-            tokens[j] = 1
-    
-        res = np.append(res,tokens)
+            res = np.append(res,tokens)
+            
 
-    res = res.reshape(int(len(res)/len(tokens)),int(len(tokens)))
+    res = res.reshape(int(len(res)/len(tokens)), int(len(tokens)))
 
     return res
