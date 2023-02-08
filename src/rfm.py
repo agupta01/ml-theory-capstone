@@ -7,7 +7,7 @@ from src.etl import TARGET_FNS
 logger = logging.getLogger(__name__)
 
 
-def train_rfm(X_train, y_train, power, L=1.0, lam=1e-3, T=10):
+def train_rfm(X_train, y_train, power=1, L=1.0, lam=1e-3, T=10):
     """
     Train an RFM kernel.
 
@@ -28,21 +28,21 @@ def train_rfm(X_train, y_train, power, L=1.0, lam=1e-3, T=10):
 
     M = np.eye(d)
     for t in range(T):
-        K_train = utils.K_M(X_train, X_train, M, L=L)
+        K_train = utils.K_M(X_train, X_train, M, L, power)
         alpha = y_train @ np.linalg.pinv(K_train + lam * np.eye(n))
-        M = utils.grad_laplace_mat(X_train, alpha, L, M) ** power
+        M = utils.grad_laplace_mat(X_train, alpha, L, M, power)
 
     # evaluate
-    y_hat = alpha @ utils.K_M(X_train, X_train, M, L)
+    y_hat = alpha @ utils.K_M(X_train, X_train, M, L, power)
 
     logger.info("TRAIN MSE: %.3f" % utils.mse(y_train, y_hat))
 
     return alpha, M
 
 
-def test_rfm(X_train, X_test, y_test, alpha, M, L):
+def test_rfm(X_train, X_test, y_test, alpha, M, L, power=1):
     """Test an RFM kernel."""
-    y_hat = alpha @ utils.K_M(X_train, X_test, M, L)
+    y_hat = alpha @ utils.K_M(X_train, X_test, M, L, power)
 
     logger.info("TEST MSE: %.3f" % utils.mse(y_test, y_hat))
 
