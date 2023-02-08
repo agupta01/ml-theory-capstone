@@ -43,7 +43,7 @@ def generate_test_data(
 
 
 def generate_test_classification(
-    n_samples: int, n_features: int, n_classes: int, save_path: str = None
+    n_samples: int, n_features: int, n_classes: int, informative_pct:float = 1.0, save_path: str = None
 ):
     """Generates a random classification dataset using sklearn make_classification.
 
@@ -63,11 +63,13 @@ def generate_test_classification(
     np.ndarray
         Generated data.
     """
+    informative_features = int(informative_pct*n_features)
+    noise_features = max(n_features - informative_features, 0)
     x, y = make_classification(
         n_samples=n_samples,
         n_features=n_features,
         n_classes=n_classes,
-        n_informative=n_features,
+        n_informative=informative_features,
         n_redundant=0,
         n_repeated=0,
         n_clusters_per_class=1,

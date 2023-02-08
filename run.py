@@ -102,3 +102,8 @@ elif args.task == "rfmpowertest":
         logging.info(f"M Power Test @ {i}")
         alpha, M = train_rfm(X_train, y_train, power=i, **config)
         test_rfm(X_train, X_test, y_test, alpha, M, L, power=i)
+        
+elif args.task == "rfmdimensionality":
+    # generate data
+    full_data = generate_test_classification(1000, 100, 2, informative_pct=0.1)
+    
