@@ -4,6 +4,7 @@ DSC 180 Capstone
 Advisor: Mikhail Belkin
 """
 import numpy as np, math
+import nltk
 
 n, noise_std, gamma, p, lam = 50, 0.1, 10, 8, 1e-8
 
@@ -183,3 +184,20 @@ def mse(y_true, y_pred, squared=True):
     else:
         power = 1
     return ((y_true - y_pred) ** power).mean()
+
+
+# text generation utils
+def bleu_score(y_true, y_pred, n=4):
+    return nltk.translate.bleu_score.sentence_bleu(
+        y_true, y_pred, weights=(1 / n,) * n
+    )
+
+def entropy(y):
+    """Computes the entropy of an array of numbers."""
+    y = y / y.sum()
+    logged = np.where(y > 0, np.log2(y), 0)
+    return -np.sum(y * logged)
+
+def perplexity(y):
+    """Computes the 2 ^ entropy of an array of numbers."""
+    return 2 ** entropy(y)

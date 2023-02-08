@@ -1,8 +1,8 @@
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
-import src.utils as utils
-from src.etl import TARGET_FNS
+from . import utils
+from .etl import TARGET_FNS
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,9 @@ def train_rfm(X_train, y_train, power=1, L=1.0, lam=1e-3, T=10):
     M = np.eye(d)
     for t in range(T):
         K_train = utils.K_M(X_train, X_train, M, L, power)
-        alpha = y_train @ np.linalg.pinv(K_train + lam * np.eye(n))
+        mp = np.linalg.pinv(K_train + lam * np.eye(n))
+        print(f"mp: {mp.shape}")
+        alpha = y_train.T @ mp
         M = utils.grad_laplace_mat(X_train, alpha, L, M, power)
 
     # evaluate

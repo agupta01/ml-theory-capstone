@@ -3,7 +3,7 @@ from logging import Logger
 import numpy as np
 from sklearn.datasets import make_classification
 import hashlib
-import utils
+from . import utils
 import os
 import requests
 import json
@@ -43,7 +43,11 @@ def generate_test_data(
 
 
 def generate_test_classification(
-    n_samples: int, n_features: int, n_classes: int, informative_pct:float = 1.0, save_path: str = None
+    n_samples: int,
+    n_features: int,
+    n_classes: int,
+    informative_pct: float = 1.0,
+    save_path: str = None,
 ):
     """Generates a random classification dataset using sklearn make_classification.
 
@@ -63,7 +67,7 @@ def generate_test_classification(
     np.ndarray
         Generated data.
     """
-    informative_features = int(informative_pct*n_features)
+    informative_features = int(informative_pct * n_features)
     noise_features = max(n_features - informative_features, 0)
     x, y = make_classification(
         n_samples=n_samples,
@@ -192,7 +196,6 @@ def load_data(dataset: str, logger: Logger, **kwargs):
 
 
 def make_dataset(url: str, download: bool = True):
-
     if "data" not in os.listdir():
         os.makedirs("data")
 
@@ -200,7 +203,6 @@ def make_dataset(url: str, download: bool = True):
 
     if "download_log" in os.listdir():
         with open("download_log", "r") as file:
-
             if str(hval) in file.readlines():
                 print(f"Dataset already downloaded: download_log -> {hval}")
                 return False
@@ -231,48 +233,49 @@ def make_dataset(url: str, download: bool = True):
 
 
 def build_vocab():
-    #lowercase
+    # lowercase
     alphabet_dict = {chr(i + 97): i + 1 for i in range(26)}
     alphabet_dict.update({chr(i + 65): i + 27 for i in range(26)})
 
     special_characters = [".", ",", "!", "?", "'", ":", ";", "-", "_"]
-    special_characters_dict = {char: i + 53 for i, char in enumerate(special_characters)}
+    special_characters_dict = {
+        char: i + 53 for i, char in enumerate(special_characters)
+    }
     alphabet_dict.update(special_characters_dict)
 
     alphabet_dict[" "] = 0
     alphabet_dict["[PAD]"] = 62
     alphabet_dict["[UNK]"] = 63
-    
+
     return alphabet_dict
 
 
-def tokenizer(fp: str, contextsize:int=32):
+def tokenizer(fp: str, contextsize: int = 32):
     vocab = build_vocab()
 
     with open(fp) as file:
         data = file.readlines()
-        
+
     res = np.array([])
 
     for i in data:
         if not i:
             continue
-        
-        context = np.array([np.array([0]*len(vocab))]*contextsize)
-        
+
+        context = np.array([np.array([0] * len(vocab))] * contextsize)
+
         for j in range(contextsize):
-            
             if j >= len(i):
-                context[j][int(vocab['[PAD]'])] = 1
-            
+                context[j][int(vocab["[PAD]"])] = 1
+
             elif i[j] in vocab:
-                    context[j][int(vocab[i[j]])] = 1
-                    
+                context[j][int(vocab[i[j]])] = 1
+
             else:
-                context[j][int(vocab['[UNK]'])] = 1
-            
-        res = np.append(res,context)
-        
-    res = res.reshape(len(data),contextsize,len(vocab))
-        
-    return res
+                context[j][int(vocab["[UNK]"])] = 1
+
+        res = np.append(res, context)
+
+    res = res.reshape(len(data), contextsize, len(vocab))
+
+    return res, vocab
