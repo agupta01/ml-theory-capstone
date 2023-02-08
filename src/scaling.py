@@ -189,10 +189,17 @@ def generate_plots(train_MSEs, test_MSEs, M_norms, stdevs):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--N_runs", type=int, default=10)
-    parser.add_argument("--stdev_control", type=bool, default=True)
-    parser.add_argument("--norm_control", type=bool, default=True)
+    parser.add_argument("--stdev_control", type=str, default="true")
+    parser.add_argument("--norm_control", type=str, default="true")
     parser.add_argument("--plot", type=bool, default=True)
     args = parser.parse_args()
+
+    args.stdev_control = args.stdev_control.lower() == "true"
+    args.norm_control = args.norm_control.lower() == "true"
+
+    logging.info(f"Running {args.N_runs} runs")
+    logging.info(f"stdev_control: {args.stdev_control}")
+    logging.info(f"norm_control: {args.norm_control}")
 
     train_MSEs, test_MSEs, M_norms, stdevs = run_sim(
         args.N_runs, args.stdev_control, args.norm_control, args.plot

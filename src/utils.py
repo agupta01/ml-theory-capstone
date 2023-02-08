@@ -195,7 +195,7 @@ def bleu_score(y_true, y_pred, n=4):
 def entropy(y):
     """Computes the entropy of an array of numbers."""
     y = y / y.sum()
-    logged = np.where(y > 0, np.log2(y), 0)
+    logged = np.where(y > 0, np.log2(y + 1e-23), 0)
     return -np.sum(y * logged)
 
 def perplexity(y):
