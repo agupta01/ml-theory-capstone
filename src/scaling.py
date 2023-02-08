@@ -102,7 +102,7 @@ def run_one_sim(stdev_control=True, norm_control=True):
         alpha, M = train_for_scaling(train_X, train_y)
 
         if norm_control:
-            M = apply_norm_control(M, strategy="svd")
+            M = apply_norm_control(M, strategy="eig")
 
         M_norm.append(np.linalg.norm(M))
 
@@ -208,9 +208,9 @@ if __name__ == "__main__":
     used_M_norm = "_norm_control" if args.norm_control else ""
     used_stdev = "_stdev_control" if args.stdev_control else ""
 
-    np.save(f"../results/arrays/train_MSEs{used_M_norm}{used_stdev}.npy", train_MSEs)
-    np.save(f"../results/arrays/test_MSEs{used_M_norm}{used_stdev}.npy", test_MSEs)
-    np.save(f"../results/arrays/M_norms{used_M_norm}{used_stdev}.npy", M_norms)
-    np.save(f"../results/arrays/stdevs{used_M_norm}{used_stdev}.npy", stdevs)
+    np.save(f"../results/arrays/train_MSEs{used_M_norm}{used_stdev}_eig.npy", train_MSEs)
+    np.save(f"../results/arrays/test_MSEs{used_M_norm}{used_stdev}_eig.npy", test_MSEs)
+    np.save(f"../results/arrays/M_norms{used_M_norm}{used_stdev}_eig.npy", M_norms)
+    np.save(f"../results/arrays/stdevs{used_M_norm}{used_stdev}_eig.npy", stdevs)
 
     logging.info("Done.")
