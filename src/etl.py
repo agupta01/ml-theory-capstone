@@ -1,10 +1,9 @@
 from logging import Logger
 
 import numpy as np
-import src.utils as utils
 from sklearn.datasets import make_classification
 import hashlib
-import src.utils as utils
+import utils
 import os
 import requests
 import json
@@ -230,45 +229,48 @@ def make_dataset(url: str, download: bool = True):
 
 
 def build_vocab():
-    # lowercase
+    #lowercase
     alphabet_dict = {chr(i + 97): i + 1 for i in range(26)}
     alphabet_dict.update({chr(i + 65): i + 27 for i in range(26)})
 
     special_characters = [".", ",", "!", "?", "'", ":", ";", "-", "_"]
-    special_characters_dict = {
-        char: i + 53 for i, char in enumerate(special_characters)
-    }
+    special_characters_dict = {char: i + 53 for i, char in enumerate(special_characters)}
     alphabet_dict.update(special_characters_dict)
 
     alphabet_dict[" "] = 0
+    alphabet_dict["[PAD]"] = 62
+    alphabet_dict["[UNK]"] = 63
+    
     return alphabet_dict
 
 
-def tokenizer(fp: str, tokensize:int=32):
+def tokenizer(fp: str, contextsize:int=32):
     vocab = build_vocab()
 
     with open(fp) as file:
         data = file.readlines()
+        
     res = np.array([])
 
     for i in data:
         if not i:
             continue
-    
-    
-        tokens = np.array([0]*tokensize)
         
-        for j in range(tokensize):
+        context = np.array([np.array([0]*len(vocab))]*contextsize)
+        
+        for j in range(contextsize):
             
             if j >= len(i):
-                break
+                context[j][int(vocab['[PAD]'])] = 1
             
-            if i[j] in vocab:
-                tokens[j] = 1
+            elif i[j] in vocab:
+                    context[j][int(vocab[i[j]])] = 1
+                    
+            else:
+                context[j][int(vocab['[UNK]'])] = 1
+            
+        res = np.append(res,context)
         
-            res = np.append(res,tokens)
-            
-
-    res = res.reshape(int(len(res)/len(tokens)), int(len(tokens)))
-
+    res = res.reshape(len(data),contextsize,len(vocab))
+        
     return res
