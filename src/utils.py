@@ -1,8 +1,9 @@
 """
-Code by Parthe Pandit
+Code by Parthe Pandit and Arunav Gupta
 DSC 180 Capstone
 Advisor: Mikhail Belkin
 """
+from typing import Tuple, Union
 import numpy as np, math
 import nltk
 
@@ -134,11 +135,11 @@ def grad_laplace_mat(X, sol, L, P, power=1, batch_size=2, norm_control=False):
     M = 0.0
 
     bs = batch_size
+    if norm_control:
+        G = rsvd_norm_control(G[:, 0, :])[:, None, :]
     batches = np.split(G, bs)
     for i in range(len(batches)):
         grad = batches[i]
-        if norm_control:
-            grad = rsvd_norm_control(grad)
         gradT = np.swapaxes(grad, 1, 2)
         M += np.sum(gradT @ grad, axis=0)
         del grad, gradT
@@ -147,16 +148,14 @@ def grad_laplace_mat(X, sol, L, P, power=1, batch_size=2, norm_control=False):
     return M
 
 
-def rsvd_norm_control(J, keep_p=0.1):
+def rsvd_norm_control(J, keep_p=0.5):
     """
     Apply randomized svd to J and return the reconstructed matrix using the top keep_p values.
     """
+    k = int(keep_p * J.shape[1])
     u, s, v = np.linalg.svd(J, full_matrices=False)
-    s = np.diag(s)
-    s = s[: int(keep_p * len(s)), : int(keep_p * len(s))]
-    u = u[:, : int(keep_p * len(u))]
-    v = v[: int(keep_p * len(v)), :]
-    return u @ s @ v
+    return np.dot(u[:, :k], np.dot(np.diag(s[:k]), v[:k, :]))
+
 
 """
 def grad_laplace_mat(a, x, z, M, L): # (n, d), (m, d), (d, d) --> (n, m, d)
@@ -201,9 +200,8 @@ def mse(y_true, y_pred, squared=True):
 
 # text generation utils
 def bleu_score(y_true, y_pred, n=4):
-    return nltk.translate.bleu_score.sentence_bleu(
-        y_true, y_pred, weights=(1 / n,) * n
-    )
+    return nltk.translate.bleu_score.sentence_bleu(y_true, y_pred, weights=(1 / n,) * n)
+
 
 def entropy(y):
     """Computes the entropy of an array of numbers."""
@@ -211,9 +209,11 @@ def entropy(y):
     logged = np.where(y > 0, np.log2(y + 1e-23), 0)
     return -np.sum(y * logged)
 
+
 def perplexity(y):
     """Computes the 2 ^ entropy of an array of numbers."""
     return 2 ** entropy(y)
+
 
 def softmax(X, axis=0):
     """

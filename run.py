@@ -1,10 +1,12 @@
 import argparse
 import json
 import logging
+import numpy as np
 from src.utils import K_M, mse
 from src.main import classify, poly_regression
 from src.rfm import train_rfm, test_rfm, plot_results
 from src.etl import generate_test_data, load_data
+from src.scaling import run_sim
 
 parser = argparse.ArgumentParser()
 logger = logging.getLogger(__name__)
@@ -26,9 +28,14 @@ parser.add_argument(
         "fashionmnist",
         "rfm",
         "rfmpowertest",
+        "scaling",
     ],
 )
 parser.add_argument("--verbose", help="Set logging to DEBUG", action="store_true")
+# scaling args
+parser.add_argument("--N_runs", type=int, default=10)
+parser.add_argument("--norm_control", type=str, default="true")
+parser.add_argument("--plot", type=bool, default=True)
 
 # parse arguments
 args = parser.parse_args()
@@ -103,6 +110,17 @@ elif args.task == "rfmpowertest":
         alpha, M = train_rfm(X_train, y_train, power=i, **config)
         test_rfm(X_train, X_test, y_test, alpha, M, L, power=i)
 
-elif args.task == "rfmdimensionality":
-    # generate data
-    full_data = generate_test_classification(1000, 100, 2, informative_pct=0.1)
+elif args.task == "scaling":
+    args.norm_control = args.norm_control.lower() == "true"
+
+    logging.info(f"Running {args.N_runs} runs")
+    logging.info(f"norm_control: {args.norm_control}")
+
+    train_MSEs, test_MSEs = run_sim(args.N_runs, args.norm_control, args.plot)
+
+    used_M_norm = "_norm_control" if args.norm_control else ""
+
+    np.save(f"./results/arrays/train_MSEs{used_M_norm}.npy", train_MSEs)
+    np.save(f"./results/arrays/test_MSEs{used_M_norm}.npy", test_MSEs)
+
+    logging.info("Done.")
