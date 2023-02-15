@@ -3,7 +3,7 @@ from logging import Logger
 import numpy as np
 from sklearn.datasets import make_classification
 import hashlib
-from . import utils
+import utils
 import os
 import requests
 import json
