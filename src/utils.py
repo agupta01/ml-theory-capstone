@@ -83,7 +83,7 @@ def K_M(x, z, M, L, power=1):
     return np.exp(pairwise_distances * -(1.0 / L))
 
 
-def grad_laplace_mat(X, sol, L, P, power=1, batch_size=2):
+def grad_laplace_mat(X, sol, L, P, power=1, batch_size=2, norm_control=False):
     M = 0.0
 
     num_samples = 20000
@@ -102,8 +102,8 @@ def grad_laplace_mat(X, sol, L, P, power=1, batch_size=2):
     K = K / dist
     K[K == float("inf")] = 0.0
 
-    sol = sol[:, None]
-    a1 = sol.T
+    # sol = sol[:, None]
+    a1 = sol
 
     n, d = X.shape
     n, c = sol.shape
@@ -137,6 +137,8 @@ def grad_laplace_mat(X, sol, L, P, power=1, batch_size=2):
     batches = np.split(G, bs)
     for i in range(len(batches)):
         grad = batches[i]
+        if norm_control:
+            grad = rsvd_norm_control(grad)
         gradT = np.swapaxes(grad, 1, 2)
         M += np.sum(gradT @ grad, axis=0)
         del grad, gradT
@@ -144,6 +146,17 @@ def grad_laplace_mat(X, sol, L, P, power=1, batch_size=2):
 
     return M
 
+
+def rsvd_norm_control(J, keep_p=0.1):
+    """
+    Apply randomized svd to J and return the reconstructed matrix using the top keep_p values.
+    """
+    u, s, v = np.linalg.svd(J, full_matrices=False)
+    s = np.diag(s)
+    s = s[: int(keep_p * len(s)), : int(keep_p * len(s))]
+    u = u[:, : int(keep_p * len(u))]
+    v = v[: int(keep_p * len(v)), :]
+    return u @ s @ v
 
 """
 def grad_laplace_mat(a, x, z, M, L): # (n, d), (m, d), (d, d) --> (n, m, d)
@@ -201,3 +214,10 @@ def entropy(y):
 def perplexity(y):
     """Computes the 2 ^ entropy of an array of numbers."""
     return 2 ** entropy(y)
+
+def softmax(X, axis=0):
+    """
+    Applies softmax acros specified axis.
+    """
+    e_x = np.exp(X - np.max(X, axis=axis, keepdims=True))
+    return e_x / e_x.sum(axis=axis, keepdims=True)
