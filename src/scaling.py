@@ -6,7 +6,7 @@ import numpy as np
 import seaborn as sns
 from tqdm import trange
 
-from src.utils import K_M, mse
+from src.utils import K_M, mse, K_laplace_mat
 from src.rfm import RFM
 
 # set dpi for plots
@@ -29,11 +29,11 @@ logging.basicConfig(
 
 # target function
 f = lambda X: (
-    5 * np.power(X[:, 0], 3) + 2 * np.power(X[:, 1], 2) + 10 * X[:, 2]
+    5 * np.power(X[:, 0], 3) + 2 * np.power(X[:, 1], 2) + 10 * X[:, 2] + np.random.normal(size=X.shape[0], scale=0.1)
 ).reshape(-1, 1)
 
 
-def run_one_sim(norm_control=True):
+def run_one_sim(norm_control=True, baseline=False):
     train_MSE = []
     test_MSE = []
     mse_hist = []
@@ -61,24 +61,33 @@ def run_one_sim(norm_control=True):
         y_train = f(X_train)
         y_val = f(X_val)
         y_test = f(X_test)
-
-        model = RFM()
-        mse_hist.append(
-            model.fit(X_train, y_train, X_val, y_val, norm_control=norm_control)
-        )
-        y_hat = model.predict(X_train)
-        train_MSE.append(mse(y_train, y_hat))
-        test_MSE.append(model.score(X_test, y_test))
+        
+        if not baseline:
+            model = RFM()
+            mse_hist.append(
+                model.fit(X_train, y_train, X_val, y_val, norm_control=norm_control, baseline=baseline)
+            )
+            y_hat = model.predict(X_train)
+            train_MSE.append(mse(y_train, y_hat))
+            test_MSE.append(model.score(X_test, y_test))
+        else:
+            # Train and use a laplacian kernel
+            K = K_laplace_mat(X_train, X_train, 1.0)
+            alpha_hat = np.linalg.solve(K + 1e-3 * np.eye(len(X_train)), y_train)
+            y_hat_train = K @ alpha_hat
+            y_hat_test = K_laplace_mat(X_test, X_train, 1.0) @ alpha_hat
+            train_MSE.append(mse(y_train, y_hat_train))
+            test_MSE.append(mse(y_test, y_hat_test))
 
     return np.array(train_MSE), np.array(test_MSE)
 
 
-def run_sim(N_runs=10, norm_control=True, plot=True):
+def run_sim(N_runs=10, norm_control=True, baseline=False, plot=True):
     train_MSEs = []
     test_MSEs = []
 
     for i in trange(N_runs):
-        train_MSE, test_MSE = run_one_sim(norm_control)
+        train_MSE, test_MSE = run_one_sim(norm_control, baseline)
         train_MSEs.append(train_MSE)
         test_MSEs.append(test_MSE)
 

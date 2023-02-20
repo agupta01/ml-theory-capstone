@@ -25,6 +25,7 @@ class RFM:
         T=None,
         power=None,
         norm_control=False,
+        baseline=False,
     ):
         if L is not None:
             self.L = L
@@ -47,6 +48,7 @@ class RFM:
             T=self.T,
             power=self.power,
             norm_control=norm_control,
+            baseline=baseline,
         )
         return mse_hist
 
@@ -67,6 +69,7 @@ def train_rfm(
     lam=1e-3,
     T=10,
     norm_control=False,
+    baseline=False,
 ):
     """
     Train an RFM kernel.
@@ -82,6 +85,7 @@ def train_rfm(
     T: int, number of training iterations
     power: int, power of M matrix
     norm_control: bool (default False), whether to apply rsvd-based reconstruction during gradient calculation
+    baseline: bool (default False), determines whether to use a 0th iteration kernel (don't run convergence) for baseline calculations
 
 
     Returns
@@ -101,24 +105,29 @@ def train_rfm(
     best_alpha = None
 
     M = np.eye(d)
-    for t in range(1, T + 1):
-        K_train = utils.K_M(X_train, X_train, M, L, power)
-        alpha = np.linalg.solve(K_train + lam * np.eye(n), y_train)
-        M = utils.grad_laplace_mat(
-            X_train, alpha, L=L, P=M, power=power, norm_control=norm_control
+    if not baseline:
+        for t in range(1, T + 1):
+            K_train = utils.K_M(X_train, X_train, M, L, power)
+            alpha = np.linalg.solve(K_train + lam * np.eye(n), y_train)
+            M = utils.grad_laplace_mat(
+                X_train, alpha, L=L, P=M, power=power, norm_control=norm_control
+            )
+
+            # evaluate on val, if this is the best so far, save it
+            y_hat = utils.K_M(X_val, X_train, M, L, power) @ alpha
+            val_mse = utils.mse(y_val, y_hat)
+            if not val_mse_hist or val_mse < min(val_mse_hist):
+                best_M = M
+                best_alpha = alpha
+            val_mse_hist.append(val_mse)
+
+        logger.debug(
+            "BEST VAL MSE: %.3f @ t=%d" % (min(val_mse_hist), np.argmin(val_mse_hist) + 1)
         )
-
-        # evaluate on val, if this is the best so far, save it
-        y_hat = utils.K_M(X_val, X_train, M, L, power) @ alpha
-        val_mse = utils.mse(y_val, y_hat)
-        if not val_mse_hist or val_mse < min(val_mse_hist):
-            best_M = M
-            best_alpha = alpha
-        val_mse_hist.append(val_mse)
-
-    logger.debug(
-        "BEST VAL MSE: %.3f @ t=%d" % (min(val_mse_hist), np.argmin(val_mse_hist) + 1)
-    )
+    else:
+        best_M = M
+        K_train = utils.K_M(X_train, X_train, M, L, power)
+        best_alpha = np.linalg.solve(K_train + lam * np.eye(n), y_train)
 
     # evaluate
     y_hat = (
