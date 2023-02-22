@@ -1,15 +1,15 @@
 from logging import Logger
 
 import numpy as np
-from sklearn.datasets import make_classification
+#from sklearn.datasets import make_classification
 import hashlib
-from . import utils
+import utils
 import os
 import requests
 import json
 from bs4 import BeautifulSoup
 
-TARGET_FNS = {"xsinx": utils.target_xsinx}
+#TARGET_FNS = {"xsinx": utils.target_xsinx}
 
 
 def generate_test_data(
@@ -195,7 +195,7 @@ def load_data(dataset: str, logger: Logger, **kwargs):
     )
 
 
-def make_dataset(url: str, download: bool = True):
+def make_dataset(url: str, fname: str, download: bool = True):
     if "data" not in os.listdir():
         os.makedirs("data")
 
@@ -221,17 +221,21 @@ def make_dataset(url: str, download: bool = True):
         i.text.strip().replace("\n", "").replace("\r", "") for i in soup.find_all("p")
     ]
 
-    fname = res[1] + ".txt"
-
+    fname = fname + ".txt"
+    
     res = "\n".join(res)
-
+    
     with open(os.path.join("data/", fname), "w") as file:
         file.write(res)
 
     print("Dataset successfully downloaded")
     return True
 
-
+def make_all_datasets(urls: list[str]):
+    for i in range(len(urls)):
+        make_dataset(urls[i],str(i))
+    return True
+    
 def build_vocab():
     # lowercase
     alphabet_dict = {chr(i + 97): i + 1 for i in range(26)}
@@ -257,18 +261,20 @@ def tokenizer(fp: str, contextsize: int = 32):
         data = file.readlines()
 
     res = np.array([])
-
+    line_ct = len(data)
     for i in data:
         if not i:
             continue
 
         context = np.array([np.array([0] * len(vocab))] * contextsize)
 
+        if len(i) < contextsize:
+            line_ct -= 1
+            continue
+        
         for j in range(contextsize):
-            if j >= len(i):
-                context[j][int(vocab["[PAD]"])] = 1
 
-            elif i[j] in vocab:
+            if i[j] in vocab:
                 context[j][int(vocab[i[j]])] = 1
 
             else:
@@ -276,6 +282,18 @@ def tokenizer(fp: str, contextsize: int = 32):
 
         res = np.append(res, context)
 
-    res = res.reshape(len(data), contextsize, len(vocab))
+    res = res.reshape(line_ct, contextsize, len(vocab))
 
-    return res, vocab
+    return res
+
+def generate_corpus(contextsize:int=64):
+    fps = os.listdir("data")
+
+    for i in range(len(fps)):
+        if i == 0:
+            corpus = tokenizer(os.path.join("data",fps[i]),contextsize)
+            continue
+        
+        corpus = np.concatenate((corpus,tokenizer(os.path.join("data",fps[i]),contextsize)), axis = 0)
+        
+    return corpus
