@@ -1,15 +1,24 @@
-from logging import Logger
+import logging
+from typing import List
 
 import numpy as np
 #from sklearn.datasets import make_classification
 import hashlib
-import utils
+from src import utils
 import os
 import requests
 import json
 from bs4 import BeautifulSoup
 
-#TARGET_FNS = {"xsinx": utils.target_xsinx}
+TARGET_FNS = {"xsinx": utils.target_xsinx}
+
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] \t %(message)s",
+    datefmt="%b %d %Y %I:%M%p",
+)
 
 
 def generate_test_data(
@@ -93,7 +102,7 @@ def preproc_data(
     subset: float,
     pos_class: int,
     neg_class: int,
-    logger: Logger,
+    logger: logging.Logger,
 ):
     """Helper function to filter -> subset -> binarize data.
 
@@ -157,7 +166,7 @@ def preproc_data(
     return (x_train, y_train), (x_test, y_test)
 
 
-def load_data(dataset: str, logger: Logger, **kwargs):
+def load_data(dataset: str, logger: logging.Logger, **kwargs):
     """Loads the given dataset.
 
     Parameters
@@ -231,7 +240,7 @@ def make_dataset(url: str, fname: str, download: bool = True):
     print("Dataset successfully downloaded")
     return True
 
-def make_all_datasets(urls: list[str]):
+def make_all_datasets(urls: List[str]):
     for i in range(len(urls)):
         make_dataset(urls[i],str(i))
     return True
@@ -239,23 +248,26 @@ def make_all_datasets(urls: list[str]):
 def build_vocab():
     # lowercase
     alphabet_dict = {chr(i + 97): i + 1 for i in range(26)}
-    alphabet_dict.update({chr(i + 65): i + 27 for i in range(26)})
+    # alphabet_dict.update({chr(i + 65): i + 27 for i in range(26)})
+    numbers = [str(i) for i in range(10)]
+    numbers_dict = {num: i + 27 for i, num in enumerate(numbers)}
+    alphabet_dict.update(numbers_dict)
 
-    special_characters = [".", ",", "!", "?", "'", ":", ";", "-", "_"]
+    special_characters = [".", ",", "!", "?", "’", ":", ";", "-", "_", "&", "(", ")"]
     special_characters_dict = {
-        char: i + 53 for i, char in enumerate(special_characters)
+        char: i + 37 for i, char in enumerate(special_characters)
     }
     alphabet_dict.update(special_characters_dict)
 
     alphabet_dict[" "] = 0
-    alphabet_dict["[PAD]"] = 62
-    alphabet_dict["[UNK]"] = 63
+    alphabet_dict["<UNK>"] = 49
 
     return alphabet_dict
 
 
 def tokenizer(fp: str, contextsize: int = 32):
     vocab = build_vocab()
+    unknown_chars = set()
 
     with open(fp) as file:
         data = file.readlines()
@@ -265,6 +277,8 @@ def tokenizer(fp: str, contextsize: int = 32):
     for i in data:
         if not i:
             continue
+        
+        i = i.lower()
 
         context = np.array([np.array([0] * len(vocab))] * contextsize)
 
@@ -278,11 +292,18 @@ def tokenizer(fp: str, contextsize: int = 32):
                 context[j][int(vocab[i[j]])] = 1
 
             else:
-                context[j][int(vocab["[UNK]"])] = 1
+                if ord(i[j]) > 127 or ord(i[j]) == 10:
+                    pass
+                else:
+                    context[j][int(vocab["<UNK>"])] = 1
+                    # log the ascii code of the unknown character
+                    unknown_chars.add(ord(i[j]))
 
         res = np.append(res, context)
 
     res = res.reshape(line_ct, contextsize, len(vocab))
+
+    logger.info(f"Unknown characters: {unknown_chars}")
 
     return res
 
