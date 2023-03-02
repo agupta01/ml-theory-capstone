@@ -139,42 +139,6 @@ def train_rfm(
     return best_alpha, best_M, val_mse_hist
 
 
-def train_rfm_sparse(
-    X_train,
-    y_train,
-    X_val=None,
-    y_val=None,
-    power=1,
-    L=1.0,
-    lam=1e-3,
-    T=10,
-    norm_control=False,
-    baseline=False,
-):
-    """
-    Train an RFM kernel.
-
-    Parameters
-    ----------
-    X_train: (n,d) scipy sparse array, training data
-    y_train: (n,m) scipy sparse array, true outputs
-    X_val: (w, d) scipy sparse array, validation data
-    y_val: (w, m) scipy sparse array, true validation outputs
-    L: float, bandwidth of kernel
-    lam: float, regularization coefficient ("lambda")
-    T: int, number of training iterations
-    power: int, power of M matrix
-    norm_control: bool (default False), whether to apply rsvd-based reconstruction during gradient calculation
-    baseline: bool (default False), determines whether to use a 0th iteration kernel (don't run convergence) for baseline calculations
-
-
-    Returns
-    -------
-    alpha: (n,1) scipy sparse array, contains weights for each training datapoint
-    M: (d,d) scipy sparse array, contains trained weights of each feature
-    """
-
-
 def test_rfm(X_train, X_test, y_test, alpha, M, L, power=1):
     """Test an RFM kernel."""
     y_hat = alpha @ utils.K_M(X_train, X_test, M, L, power)
