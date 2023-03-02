@@ -1,5 +1,6 @@
 import logging
 import numpy as np
+from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 from . import utils
 from .etl import TARGET_FNS
@@ -8,37 +9,28 @@ logger = logging.getLogger(__name__)
 
 
 class RFM:
-    def __init__(self, L=1.0, lam=1e-3, T=10, power=1):
+    def __init__(self, backend="naive", norm_control=False, L=1.0, lam=1e-3, T=10, power=1):
+        self.backend = backend
+        self.norm_control = norm_control
         self.L = L
         self.lam = lam
         self.T = T
         self.power = power
+        self.baseline = False # deprecated; set T = 0 for baseline
 
-    def fit(
-        self,
-        X_train,
-        y_train,
-        X_val=None,
-        y_val=None,
-        L=None,
-        lam=None,
-        T=None,
-        power=None,
-        norm_control=False,
-        baseline=False,
-    ):
-        if L is not None:
-            self.L = L
-        if lam is not None:
-            self.lam = lam
-        if T is not None:
-            self.T = T
-        if power is not None:
-            self.power = power
+    def fit(self, X, y, val_split=0.0):
+        # split into train and val, if specified
+        if val_split > 0:
+            X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=val_split)
+        else:
+            X_train = X
+            y_train = y
+            X_val = None
+            y_val = None
 
-        self.X_train = X_train
+        self.X_ = X_train
 
-        self.alpha, self.M, mse_hist = train_rfm(
+        self.alpha_, self.M_, mse_hist = train_rfm(
             X_train,
             y_train,
             X_val,
@@ -47,16 +39,17 @@ class RFM:
             lam=self.lam,
             T=self.T,
             power=self.power,
-            norm_control=norm_control,
-            baseline=baseline,
+            norm_control=self.norm_control,
+            baseline=self.baseline,
+            backend=self.backend
         )
         return mse_hist
 
-    def predict(self, X_test):
-        return utils.K_M(X_test, self.X_train, self.M, self.L, self.power) @ self.alpha
+    def predict(self, X):
+        return utils.K_M(X, self.X_, self.M_, self.L, self.power) @ self.alpha_
 
-    def score(self, X_test, y_test):
-        return utils.mse(y_test, self.predict(X_test))
+    def score(self, X, y):
+        return utils.mse(y, self.predict(X))
 
 
 def train_rfm(
@@ -70,6 +63,7 @@ def train_rfm(
     T=10,
     norm_control=False,
     baseline=False,
+    backend="naive",
 ):
     """
     Train an RFM kernel.
@@ -86,7 +80,7 @@ def train_rfm(
     power: int, power of M matrix
     norm_control: bool (default False), whether to apply rsvd-based reconstruction during gradient calculation
     baseline: bool (default False), determines whether to use a 0th iteration kernel (don't run convergence) for baseline calculations
-
+    backend: str, determines which backend to use for training. Options are "naive" (basic dense numpy), "opt" (optimized dense numpy), and "gpu" (GPU-accelerated)
 
     Returns
     -------
@@ -95,6 +89,12 @@ def train_rfm(
     """
     n, d = X_train.shape
     n, m = y_train.shape
+
+    grad_func = {
+        "naive": utils.grad_laplace_mat,
+        "opt": utils.grad_laplace_mat_opt,
+        "gpu": utils.grad_laplace_mat_gpu,
+    }
 
     if X_val is None:
         X_val = X_train
@@ -109,7 +109,7 @@ def train_rfm(
         for t in range(1, T + 1):
             K_train = utils.K_M(X_train, X_train, M, L, power)
             alpha = np.linalg.solve(K_train + lam * np.eye(n), y_train)
-            M = utils.grad_laplace_mat(
+            M = grad_func[backend](
                 X_train, alpha, L=L, P=M, power=power, norm_control=norm_control
             )
 
@@ -137,6 +137,42 @@ def train_rfm(
     logger.debug("TRAIN MSE: %.3f" % utils.mse(y_train, y_hat))
 
     return best_alpha, best_M, val_mse_hist
+
+
+def train_rfm_sparse(
+    X_train,
+    y_train,
+    X_val=None,
+    y_val=None,
+    power=1,
+    L=1.0,
+    lam=1e-3,
+    T=10,
+    norm_control=False,
+    baseline=False,
+):
+    """
+    Train an RFM kernel.
+
+    Parameters
+    ----------
+    X_train: (n,d) scipy sparse array, training data
+    y_train: (n,m) scipy sparse array, true outputs
+    X_val: (w, d) scipy sparse array, validation data
+    y_val: (w, m) scipy sparse array, true validation outputs
+    L: float, bandwidth of kernel
+    lam: float, regularization coefficient ("lambda")
+    T: int, number of training iterations
+    power: int, power of M matrix
+    norm_control: bool (default False), whether to apply rsvd-based reconstruction during gradient calculation
+    baseline: bool (default False), determines whether to use a 0th iteration kernel (don't run convergence) for baseline calculations
+
+
+    Returns
+    -------
+    alpha: (n,1) scipy sparse array, contains weights for each training datapoint
+    M: (d,d) scipy sparse array, contains trained weights of each feature
+    """
 
 
 def test_rfm(X_train, X_test, y_test, alpha, M, L, power=1):
