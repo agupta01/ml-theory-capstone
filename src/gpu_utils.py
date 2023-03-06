@@ -31,7 +31,7 @@ def K_M(x, z, M, L):
 def K_M_grad(x, z, M, L):
     K = K_M(x, z, M, L)
     dist = mnorm(x, z, M, squared=False)
-    dist = torch.where(dist < 1e-4, torch.zeros_like(dist).float(), dist)
+    dist = torch.where(dist < 1e-6, torch.zeros_like(dist).float(), dist)
 
     K = K / dist
     K = torch.where(K == float("inf"), torch.zeros_like(K).float(), K)

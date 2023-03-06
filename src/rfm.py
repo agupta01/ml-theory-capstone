@@ -40,10 +40,11 @@ class RFM:
                 X_train = torch.from_numpy(X_train).to(self.device).float()
             if not isinstance(y_train, torch.Tensor):
                 y_train = torch.from_numpy(y_train).to(self.device).float()
-            if not isinstance(X_val, torch.Tensor):
-                X_val = torch.from_numpy(X_val).to(self.device).float()
-            if not isinstance(y_val, torch.Tensor):
-                y_val = torch.from_numpy(y_val).to(self.device).float()
+            if X_val is not None:
+                if not isinstance(X_val, torch.Tensor):
+                    X_val = torch.from_numpy(X_val).to(self.device).float()
+                if not isinstance(y_val, torch.Tensor):
+                    y_val = torch.from_numpy(y_val).to(self.device).float()
 
         self.X_ = X_train
 
