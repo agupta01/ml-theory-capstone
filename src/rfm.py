@@ -102,6 +102,7 @@ def train_rfm(
 
     M = np.eye(d)
     for t in range(1, T + 1):
+        print(t)
         K_train = utils.K_M(X_train, X_train, M, L, power)
         alpha = np.linalg.solve(K_train + lam * np.eye(n), y_train)
         M = utils.grad_laplace_mat(

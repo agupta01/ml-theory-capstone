@@ -10,6 +10,8 @@ import requests
 import json
 from bs4 import BeautifulSoup
 
+import PyPDF2
+
 TARGET_FNS = {"xsinx": utils.target_xsinx}
 
 
@@ -306,6 +308,74 @@ def tokenizer(fp: str, contextsize: int = 32):
     logger.info(f"Unknown characters: {unknown_chars}")
 
     return res
+
+
+def pdf_tokenizer(fp: str, contextsize: int = 32):
+    
+    vocab = build_vocab()
+    
+    unknown_chars = set()
+
+    pdf_file = open(fp,"rb")
+    
+    pdf_reader = PyPDF2.PdfReader(pdf_file)
+
+    # Extract text from each page in the PDF file
+    corpus = ""
+    
+    for page in range(len(pdf_reader.pages)):
+        page_obj = pdf_reader.pages[page]
+        text = page_obj.extract_text()
+        corpus += text.replace("\n"," ")
+    # Close the PDF file
+    pdf_file.close()
+    
+    
+    lines = []
+    for i in range(0,len(corpus),contextsize):
+        if i + contextsize >= len(corpus):
+            break
+        lines.append(corpus[i:i+contextsize])
+        
+    
+    res = np.array([])
+    
+    line_ct = 0
+    
+    for i in lines:
+        
+        if not i:
+            continue
+        
+        if len(i) < contextsize:
+            continue
+        
+        i = i.lower()
+
+        context = np.array([np.array([0] * len(vocab))] * contextsize)
+        line_ct += 1
+        
+        for j in range(contextsize):
+
+            if i[j] in vocab:
+                context[j][int(vocab[i[j]])] = 1
+
+            else:
+                if ord(i[j]) > 127 or ord(i[j]) == 10:
+                    pass
+                else:
+                    context[j][int(vocab["<UNK>"])] = 1
+                    # log the ascii code of the unknown character
+                    unknown_chars.add(ord(i[j]))
+
+        res = np.append(res, context)
+
+    res = res.reshape(line_ct, contextsize, len(vocab))
+
+    logger.info(f"Unknown characters: {unknown_chars}")
+
+    return res
+
 
 def generate_corpus(contextsize:int=64):
     fps = os.listdir("data")
