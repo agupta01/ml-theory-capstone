@@ -119,7 +119,9 @@ elif args.task == "scaling":
     logging.info(f"norm_control: {args.norm_control}")
     logging.info(f"baseline: {args.baseline}")
 
-    train_MSEs, test_MSEs = run_sim(N_runs=args.N_runs, norm_control=args.norm_control, baseline=args.baseline)
+    train_MSEs, test_MSEs = run_sim(
+        N_runs=args.N_runs, norm_control=args.norm_control, baseline=args.baseline
+    )
 
     used_M_norm = "_norm_control" if args.norm_control else ""
     used_baseline = "_baseline" if args.baseline else ""

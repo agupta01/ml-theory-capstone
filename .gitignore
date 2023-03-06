@@ -4,3 +4,4 @@ __pycache__
 logs/
 download_log
 results/arrays
+recursive_feature_machines

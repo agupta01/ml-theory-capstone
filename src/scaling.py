@@ -29,7 +29,10 @@ logging.basicConfig(
 
 # target function
 f = lambda X: (
-    5 * np.power(X[:, 0], 3) + 2 * np.power(X[:, 1], 2) + 10 * X[:, 2] + np.random.normal(size=X.shape[0], scale=0.1)
+    5 * np.power(X[:, 0], 3)
+    + 2 * np.power(X[:, 1], 2)
+    + 10 * X[:, 2]
+    + np.random.normal(size=X.shape[0], scale=0.1)
 ).reshape(-1, 1)
 
 
@@ -38,38 +41,36 @@ def run_one_sim(norm_control=True, baseline=False):
     test_MSE = []
     mse_hist = []
 
-    n, D = 100, 200
+    n, D = 1000, 500
 
     X_full = np.random.normal(size=(n, D))
     y = f(X_full)
 
-    for d in range(10, 201):
+    for d in range(10, 501):
         X = X_full[:, :d] * (1 / np.sqrt(d))
 
         test_split_size = 0.2
-        val_split_size = 0.1
         n_test_split = int(n * test_split_size)
-        n_val_split = int(n * val_split_size)
 
-        X_train, X_val, X_test = (
-            X[: n - n_test_split - n_val_split],
-            X[n - n_test_split - n_val_split : n - n_test_split],
+        X_train, X_test = (
+            X[: n - n_test_split],
             X[n - n_test_split :],
         )
 
         # recompute y
         y_train = f(X_train)
-        y_val = f(X_val)
         y_test = f(X_test)
-        
-        model = RFM()
-        mse_hist.append(
-            model.fit(X_train, y_train, X_val, y_val, norm_control=norm_control, baseline=baseline)
-        )
-        y_hat = model.predict(X_train)
-        train_MSE.append(mse(y_train, y_hat))
-        test_MSE.append(model.score(X_test, y_test))
 
+        model = RFM(backend="gpu", norm_control=norm_control, T=10 if not baseline else 0)
+        mse_hist.append(
+            model.fit(
+                X_train,
+                y_train,
+                val_split=0.2,
+            )
+        )
+        train_MSE.append(model.score(X_train, y_train))
+        test_MSE.append(model.score(X_test, y_test))
 
     return np.array(train_MSE), np.array(test_MSE)
 
@@ -98,7 +99,7 @@ def generate_plots(train_MSEs, test_MSEs):
     test_MSE_mean = test_MSEs.mean(axis=0)
 
     # plot of train and test MSEs
-    d_range = list(range(10, 201))
+    d_range = list(range(10, 501))
     d_range_exploded = np.repeat(d_range, train_MSEs.shape[0])
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 9))
@@ -153,7 +154,7 @@ if __name__ == "__main__":
 
     used_M_norm = "_norm_control" if args.norm_control else ""
 
-    np.save(f"./results/arrays/train_MSEs{used_M_norm}.npy", train_MSEs)
-    np.save(f"./results/arrays/test_MSEs{used_M_norm}.npy", test_MSEs)
+    np.save(f"./results/arrays/train_MSEs{used_M_norm}_{str(args.N_runs)}.npy", train_MSEs)
+    np.save(f"./results/arrays/test_MSEs{used_M_norm}_{str(args.N_runs)}.npy", test_MSEs)
 
     logging.info("Done.")
