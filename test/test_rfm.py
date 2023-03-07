@@ -115,6 +115,9 @@ def test_gpu_matches_cpu():
     assert y_hat.shape == y.shape
     assert y_hat2.shape == y.shape
 
+    # check that scores are same
+    assert np.isclose(rfm.score(X, y), rfm2.score(X, y))
+
     # check that the predictions are the same
     try:
         assert np.allclose(y_hat, y_hat2, atol=1e-4)

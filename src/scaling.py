@@ -4,6 +4,7 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+import torch
 from tqdm import trange
 
 from src.utils import K_M, mse, K_laplace_mat
@@ -18,6 +19,8 @@ _lambda = 1e-3
 # train test split
 split_size = 0.2
 
+n, D = 1000, 2000
+
 # setup logger
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -29,10 +32,10 @@ logging.basicConfig(
 
 # target function
 f = lambda X: (
-    5 * np.power(X[:, 0], 3)
-    + 2 * np.power(X[:, 1], 2)
+    5 * torch.pow(X[:, 0], 3)
+    + 2 * torch.pow(X[:, 1], 2)
     + 10 * X[:, 2]
-    + np.random.normal(size=X.shape[0], scale=0.1)
+    # + torch.normal(mean=torch.zeros(X.shape[0]), std=torch.ones(X.shape[0])).cuda()
 ).reshape(-1, 1)
 
 
@@ -41,12 +44,10 @@ def run_one_sim(norm_control=True, baseline=False):
     test_MSE = []
     mse_hist = []
 
-    n, D = 1000, 500
 
-    X_full = np.random.normal(size=(n, D))
-    y = f(X_full)
+    X_full = torch.normal(mean=torch.zeros(n, D), std=torch.ones(n, D)).cuda()
 
-    for d in range(10, 501):
+    for d in range(10, D+1, 10):
         X = X_full[:, :d] * (1 / np.sqrt(d))
 
         test_split_size = 0.2
@@ -99,7 +100,7 @@ def generate_plots(train_MSEs, test_MSEs):
     test_MSE_mean = test_MSEs.mean(axis=0)
 
     # plot of train and test MSEs
-    d_range = list(range(10, 501))
+    d_range = list(range(10, D+1, 10))
     d_range_exploded = np.repeat(d_range, train_MSEs.shape[0])
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 9))

@@ -37,6 +37,7 @@ parser.add_argument("--N_runs", type=int, default=10)
 parser.add_argument("--norm_control", type=str, default="true")
 parser.add_argument("--plot", type=bool, default=True)
 parser.add_argument("--baseline", type=str, default="false")
+parser.add_argument("--name", type=str)
 
 # parse arguments
 args = parser.parse_args()
@@ -126,7 +127,7 @@ elif args.task == "scaling":
     used_M_norm = "_norm_control" if args.norm_control else ""
     used_baseline = "_baseline" if args.baseline else ""
 
-    np.save(f"./results/arrays/train_MSEs{used_M_norm}{used_baseline}.npy", train_MSEs)
-    np.save(f"./results/arrays/test_MSEs{used_M_norm}{used_baseline}.npy", test_MSEs)
+    np.save(f"./results/arrays/train_MSEs{used_M_norm}{used_baseline}{args.name}.npy", train_MSEs)
+    np.save(f"./results/arrays/test_MSEs{used_M_norm}{used_baseline}{args.name}.npy", test_MSEs)
 
     logging.info("Done.")
