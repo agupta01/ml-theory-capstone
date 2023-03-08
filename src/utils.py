@@ -6,6 +6,7 @@ Advisor: Mikhail Belkin
 from typing import Tuple, Union
 import numpy as np, math
 import nltk
+import torch
 
 n, noise_std, gamma, p, lam = 50, 0.1, 10, 8, 1e-8
 
@@ -84,6 +85,60 @@ def K_M(x, z, M, L, power=1):
     return np.exp(pairwise_distances * -(1.0 / L))
 
 
+def grad_laplace_mat_opt(X, sol, L, P, batch_size=2, norm_control=False, **kwargs):
+    """
+    Optimized gradient calculation done with einsum notation.
+
+    Parameters
+    ----------
+    X : np.ndarray, shape (n, d), all datapoints
+    sol : np.ndarray, shape (n, c), solution to the kernel system (alpha)
+    L : float, kernel width
+    P : np.ndarray, shape (d, d), metric matrix (M)
+    batch_size : int, number of batches to split the gradient into. Doesn't need to be used.
+    norm_control : bool, whether to perform norm control on the gradient.
+    """
+    # sample if X is too large
+    # if X.shape[0] > 20000:
+    #     num_samples = 20000
+    #     indices = torch.randperm(len(X), device=X.device)[:num_samples]
+    #     z = X[indices]
+    # else:
+    #     z = X.copy()
+
+    z = X.copy()
+
+    K = K_M_grad(X, z, P, L)
+
+    m, n = K.shape
+    n, d = X.shape
+    m, d = z.shape
+    n, c = sol.shape
+
+    aKX = np.einsum("nc, mn, nd -> mcd", sol, K, (X @ P))
+    aKz = np.einsum("nc, mn, md -> mcd", sol, K, (z @ P))
+
+    # aKX = torch.einsum('mn, ncd -> mcd', K, a.view(n, c, 1) * torch.einsum('nd, dD -> nD', X, M).view(n, 1, d))
+    # aKz = torch.einsum("mn, nc -> mc", K, a).view(m, c, 1) * torch.einsum('md, dD -> mD', z, M).view(n, 1, d)
+
+    G = (aKX - aKz) * (-1.0 / L)
+
+    M = np.einsum("mcd, mcD -> dD", G, G) / len(G)
+
+    return M
+
+
+def K_M_grad(x, z, M, L):
+    K = K_M(x, z, M, L=L)
+
+    dist = mnorm(x, z, M, squared=False)
+    dist = np.where(dist < 1e-4, np.zeros(1, dtype=np.float64), dist)
+
+    K = K / dist
+    K[K == float("inf")] = 0.0
+    return K
+
+
 def grad_laplace_mat(X, sol, L, P, power=1, batch_size=2, norm_control=False):
     M = 0.0
 
@@ -95,13 +150,7 @@ def grad_laplace_mat(X, sol, L, P, power=1, batch_size=2, norm_control=False):
     else:
         x = X
 
-    K = K_M(X, x, P, L, power)
-
-    dist = mnorm(X, x, P, power, squared=False)
-    dist = np.where(dist < 1e-4, np.zeros(1, dtype=np.float64), dist)
-
-    K = K / dist
-    K[K == float("inf")] = 0.0
+    K = K_M_grad(X, x, M=P, L=L)
 
     # sol = sol[:, None]
     a1 = sol

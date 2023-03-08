@@ -36,6 +36,8 @@ parser.add_argument("--verbose", help="Set logging to DEBUG", action="store_true
 parser.add_argument("--N_runs", type=int, default=10)
 parser.add_argument("--norm_control", type=str, default="true")
 parser.add_argument("--plot", type=bool, default=True)
+parser.add_argument("--baseline", type=str, default="false")
+parser.add_argument("--name", type=str)
 
 # parse arguments
 args = parser.parse_args()
@@ -112,15 +114,20 @@ elif args.task == "rfmpowertest":
 
 elif args.task == "scaling":
     args.norm_control = args.norm_control.lower() == "true"
+    args.baseline = args.baseline.lower() == "true"
 
     logging.info(f"Running {args.N_runs} runs")
     logging.info(f"norm_control: {args.norm_control}")
+    logging.info(f"baseline: {args.baseline}")
 
-    train_MSEs, test_MSEs = run_sim(args.N_runs, args.norm_control, args.plot)
+    train_MSEs, test_MSEs = run_sim(
+        N_runs=args.N_runs, norm_control=args.norm_control, baseline=args.baseline
+    )
 
     used_M_norm = "_norm_control" if args.norm_control else ""
+    used_baseline = "_baseline" if args.baseline else ""
 
-    np.save(f"./results/arrays/train_MSEs{used_M_norm}.npy", train_MSEs)
-    np.save(f"./results/arrays/test_MSEs{used_M_norm}.npy", test_MSEs)
+    np.save(f"./results/arrays/train_MSEs{used_M_norm}{used_baseline}{args.name}.npy", train_MSEs)
+    np.save(f"./results/arrays/test_MSEs{used_M_norm}{used_baseline}{args.name}.npy", test_MSEs)
 
     logging.info("Done.")

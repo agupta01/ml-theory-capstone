@@ -4,9 +4,10 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+import torch
 from tqdm import trange
 
-from src.utils import K_M, mse
+from src.utils import K_M, mse, K_laplace_mat
 from src.rfm import RFM
 
 # set dpi for plots
@@ -17,6 +18,8 @@ _lambda = 1e-3
 
 # train test split
 split_size = 0.2
+
+n, D = 1000, 2000
 
 # setup logger
 logger = logging.getLogger(__name__)
@@ -29,56 +32,56 @@ logging.basicConfig(
 
 # target function
 f = lambda X: (
-    5 * np.power(X[:, 0], 3) + 2 * np.power(X[:, 1], 2) + 10 * X[:, 2]
+    5 * torch.pow(X[:, 0], 3)
+    + 2 * torch.pow(X[:, 1], 2)
+    + 10 * X[:, 2]
+    # + torch.normal(mean=torch.zeros(X.shape[0]), std=torch.ones(X.shape[0])).cuda()
 ).reshape(-1, 1)
 
 
-def run_one_sim(norm_control=True):
+def run_one_sim(norm_control=True, baseline=False):
     train_MSE = []
     test_MSE = []
     mse_hist = []
 
-    n, D = 100, 200
 
-    X_full = np.random.normal(size=(n, D))
-    y = f(X_full)
+    X_full = torch.normal(mean=torch.zeros(n, D), std=torch.ones(n, D)).cuda()
 
-    for d in range(10, 201):
+    for d in range(10, D+1, 10):
         X = X_full[:, :d] * (1 / np.sqrt(d))
 
         test_split_size = 0.2
-        val_split_size = 0.1
         n_test_split = int(n * test_split_size)
-        n_val_split = int(n * val_split_size)
 
-        X_train, X_val, X_test = (
-            X[: n - n_test_split - n_val_split],
-            X[n - n_test_split - n_val_split : n - n_test_split],
+        X_train, X_test = (
+            X[: n - n_test_split],
             X[n - n_test_split :],
         )
 
         # recompute y
         y_train = f(X_train)
-        y_val = f(X_val)
         y_test = f(X_test)
 
-        model = RFM()
+        model = RFM(backend="gpu", norm_control=norm_control, T=10 if not baseline else 0)
         mse_hist.append(
-            model.fit(X_train, y_train, X_val, y_val, norm_control=norm_control)
+            model.fit(
+                X_train,
+                y_train,
+                val_split=0.2,
+            )
         )
-        y_hat = model.predict(X_train)
-        train_MSE.append(mse(y_train, y_hat))
+        train_MSE.append(model.score(X_train, y_train))
         test_MSE.append(model.score(X_test, y_test))
 
     return np.array(train_MSE), np.array(test_MSE)
 
 
-def run_sim(N_runs=10, norm_control=True, plot=True):
+def run_sim(N_runs=10, norm_control=True, baseline=False, plot=True):
     train_MSEs = []
     test_MSEs = []
 
     for i in trange(N_runs):
-        train_MSE, test_MSE = run_one_sim(norm_control)
+        train_MSE, test_MSE = run_one_sim(norm_control, baseline)
         train_MSEs.append(train_MSE)
         test_MSEs.append(test_MSE)
 
@@ -97,7 +100,7 @@ def generate_plots(train_MSEs, test_MSEs):
     test_MSE_mean = test_MSEs.mean(axis=0)
 
     # plot of train and test MSEs
-    d_range = list(range(10, 201))
+    d_range = list(range(10, D+1, 10))
     d_range_exploded = np.repeat(d_range, train_MSEs.shape[0])
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 9))
@@ -152,7 +155,7 @@ if __name__ == "__main__":
 
     used_M_norm = "_norm_control" if args.norm_control else ""
 
-    np.save(f"./results/arrays/train_MSEs{used_M_norm}.npy", train_MSEs)
-    np.save(f"./results/arrays/test_MSEs{used_M_norm}.npy", test_MSEs)
+    np.save(f"./results/arrays/train_MSEs{used_M_norm}_{str(args.N_runs)}.npy", train_MSEs)
+    np.save(f"./results/arrays/test_MSEs{used_M_norm}_{str(args.N_runs)}.npy", test_MSEs)
 
     logging.info("Done.")
