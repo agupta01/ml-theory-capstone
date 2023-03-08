@@ -87,8 +87,10 @@ class RFM:
             return utils.K_M(X, self.X_, self.M_, self.L, self.power) @ self.alpha_
 
     def score(self, X, y) -> float:
+        if isinstance(y, torch.Tensor):
+            y = y.cpu().numpy()
         if self.backend == 'gpu':
-            return utils.mse(y.cpu().numpy(), self.predict(X).cpu().numpy())
+            return utils.mse(y, self.predict(X).cpu().numpy())
         else:
             return utils.mse(y, self.predict(X))
 
