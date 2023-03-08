@@ -7,6 +7,7 @@ from typing import Tuple, Union
 import numpy as np, math
 import nltk
 import torch
+import cupy as cp
 
 n, noise_std, gamma, p, lam = 50, 0.1, 10, 8, 1e-8
 
@@ -124,6 +125,49 @@ def grad_laplace_mat_opt(X, sol, L, P, batch_size=2, norm_control=False, **kwarg
     G = (aKX - aKz) * (-1.0 / L)
 
     M = np.einsum("mcd, mcD -> dD", G, G) / len(G)
+
+    return M
+
+
+def grad_laplace_mat_cupy(X, sol, L, P, batch_size=2, norm_control=False, **kwargs):
+    """
+    Optimized gradient calculation done with einsum notation.
+
+    Parameters
+    ----------
+    X : cp.ndarray, shape (n, d), all datapoints
+    sol : cp.ndarray, shape (n, c), solution to the kernel system (alpha)
+    L : float, kernel width
+    P : cp.ndarray, shape (d, d), metric matrix (M)
+    batch_size : int, number of batches to split the gradient into. Doesn't need to be used.
+    norm_control : bool, whether to perform norm control on the gradient.
+    """
+    # sample if X is too large
+    # if X.shape[0] > 20000:
+    #     num_samples = 20000
+    #     indices = cp.random.permutation(len(X))[:num_samples]
+    #     z = X[indices]
+    # else:
+    #     z = X.copy()
+
+    z = X.copy()
+
+    K = K_M_grad(X, z, P, L)
+
+    m, n = K.shape
+    n, d = X.shape
+    m, d = z.shape
+    n, c = sol.shape
+
+    aKX = cp.einsum("nc, mn, nd -> mcd", sol, K, (X @ P))
+    aKz = cp.einsum("nc, mn, md -> mcd", sol, K, (z @ P))
+
+    # aKX = torch.einsum('mn, ncd -> mcd', K, a.view(n, c, 1) * torch.einsum('nd, dD -> nD', X, M).view(n, 1, d))
+    # aKz = torch.einsum("mn, nc -> mc", K, a).view(m, c, 1) * torch.einsum('md, dD -> mD', z, M).view(n, 1, d)
+
+    G = (aKX - aKz) * (-1.0 / L)
+
+    M = cp.einsum("mcd, mcD -> dD", G, G) / len(G)
 
     return M
 
