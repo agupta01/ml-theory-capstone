@@ -220,7 +220,7 @@ def train_rfm_gpu(
         y_val = y_train
 
     val_mse_hist = []
-    best_M = None
+    best_M = torch.eye(d, device=device)
     best_alpha = None
 
     M = torch.eye(d, device=device)
@@ -244,6 +244,11 @@ def train_rfm_gpu(
             "Iteration %d BEST VAL MSE: %.3f @ t=%d"
             % (t, min(val_mse_hist), np.argmin(val_mse_hist) + 1)
         )
+
+    if best_alpha is None:
+        # train a baseline (0th iteration kernel)
+        K_train = gpu_utils.K_M(X_train, X_train, M, L)
+        best_alpha = torch.linalg.solve(K_train + reg, y_train)
 
     # evaluate
     y_hat = (
