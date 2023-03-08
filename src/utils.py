@@ -6,6 +6,7 @@ Advisor: Mikhail Belkin
 from typing import Tuple, Union
 import numpy as np, math
 import nltk
+import torch
 
 n, noise_std, gamma, p, lam = 50, 0.1, 10, 8, 1e-8
 
@@ -83,20 +84,6 @@ def K_M(x, z, M, L, power=1):
     pairwise_distances = np.clip(pairwise_distances, 0, np.inf)
     return np.exp(pairwise_distances * -(1.0 / L))
 
-def grad_laplace_mat_gpu(X, sol, L, P, power=1, batch_size=2, norm_control=False, **kwargs):
-    """
-    Gradient calculation done with einsum notation.
-
-    Parameters
-    ----------
-    X : np.ndarray, shape (n, d), all datapoints
-    sol : np.ndarray, shape (n, c), solution to the kernel system (alpha)
-    L : float, kernel width
-    P : np.ndarray, shape (d, d), metric matrix (M)
-    batch_size : int, number of batches to split the gradient into. Doesn't need to be used.
-    norm_control : bool, whether to perform norm control on the gradient.
-    """
-    raise NotImplementedError("Not implemented yet.")
 
 def grad_laplace_mat_opt(X, sol, L, P, batch_size=2, norm_control=False, **kwargs):
     """
@@ -114,6 +101,18 @@ def grad_laplace_mat_opt(X, sol, L, P, batch_size=2, norm_control=False, **kwarg
     # example: M = np.einsum("mcd,mcD->dD", G, G)
     raise NotImplementedError("Not implemented yet.")
 
+
+def K_M_grad(x, z, M, L):
+    K = K_M(x, z, M, L=L)
+
+    dist = mnorm(x, z, M, squared=False)
+    dist = np.where(dist < 1e-4, np.zeros(1, dtype=np.float64), dist)
+
+    K = K / dist
+    K[K == float("inf")] = 0.0
+    return K
+
+
 def grad_laplace_mat(X, sol, L, P, power=1, batch_size=2, norm_control=False):
     M = 0.0
 
@@ -125,13 +124,7 @@ def grad_laplace_mat(X, sol, L, P, power=1, batch_size=2, norm_control=False):
     else:
         x = X
 
-    K = K_M(X, x, P, L, power)
-
-    dist = mnorm(X, x, P, power, squared=False)
-    dist = np.where(dist < 1e-4, np.zeros(1, dtype=np.float64), dist)
-
-    K = K / dist
-    K[K == float("inf")] = 0.0
+    K = K_M_grad(X, x, M=P, L=L)
 
     # sol = sol[:, None]
     a1 = sol
