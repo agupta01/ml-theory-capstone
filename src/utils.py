@@ -98,8 +98,34 @@ def grad_laplace_mat_opt(X, sol, L, P, batch_size=2, norm_control=False, **kwarg
     batch_size : int, number of batches to split the gradient into. Doesn't need to be used.
     norm_control : bool, whether to perform norm control on the gradient.
     """
-    # example: M = np.einsum("mcd,mcD->dD", G, G)
-    raise NotImplementedError("Not implemented yet.")
+    # sample if X is too large
+    # if X.shape[0] > 20000:
+    #     num_samples = 20000
+    #     indices = torch.randperm(len(X), device=X.device)[:num_samples]
+    #     z = X[indices]
+    # else:
+    #     z = X.copy()
+
+    z = X.copy()
+
+    K = K_M_grad(X, z, P, L)
+
+    m, n = K.shape
+    n, d = X.shape
+    m, d = z.shape
+    n, c = sol.shape
+
+    aKX = np.einsum("nc, mn, nd -> mcd", sol, K, (X @ P))
+    aKz = np.einsum("nc, mn, md -> mcd", sol, K, (z @ P))
+
+    # aKX = torch.einsum('mn, ncd -> mcd', K, a.view(n, c, 1) * torch.einsum('nd, dD -> nD', X, M).view(n, 1, d))
+    # aKz = torch.einsum("mn, nc -> mc", K, a).view(m, c, 1) * torch.einsum('md, dD -> mD', z, M).view(n, 1, d)
+
+    G = (aKX - aKz) * (-1.0 / L)
+
+    M = np.einsum("mcd, mcD -> dD", G, G) / len(G)
+
+    return M
 
 
 def K_M_grad(x, z, M, L):
