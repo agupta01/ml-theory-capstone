@@ -51,6 +51,7 @@ def grad_laplace_mat_gpu(X, a, L, M, batch_size=2, norm_control=False, **kwargs)
     batch_size : int, number of batches to split the gradient into. Doesn't need to be used.
     norm_control : bool, whether to perform norm control on the gradient.
     """
+    torch.set_grad_enabled(False)
     # sample if X is too large
     if X.shape[0] > 20000:
         num_samples = 20000
@@ -75,7 +76,11 @@ def grad_laplace_mat_gpu(X, a, L, M, batch_size=2, norm_control=False, **kwargs)
     G = (aKX - aKz) * (-1.0 / L)
 
     M = torch.einsum("mcd, mcD -> dD", G, G) / len(G)
-
+    
+    del aKX
+    del aKz
+    del G
+    torch.cuda.empty_cache()
     return M
 
 # ChatGPT

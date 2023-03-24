@@ -214,6 +214,7 @@ def train_rfm_gpu(
     M: (d,d) torch tensor, contains trained weights of each feature
     val_mse_hist: list of floats, contains validation MSE at each iteration
     """
+    torch.set_grad_enabled(False)
     n, d = X_train.shape
     n, m = y_train.shape
 
@@ -228,6 +229,7 @@ def train_rfm_gpu(
     M = torch.eye(d, device=device)
     reg = lam * torch.eye(n, device=device)
     for t in range(1, T + 1):
+        torch.cuda.empty_cache()
         K_train = gpu_utils.K_M(X_train, X_train, M, L)
         alpha = torch.linalg.solve(K_train + reg, y_train)
         M = gpu_utils.grad_laplace_mat_gpu(

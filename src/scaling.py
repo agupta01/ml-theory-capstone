@@ -19,7 +19,7 @@ _lambda = 1e-3
 # train test split
 split_size = 0.2
 
-n, D = 1000, 2000
+n, D = 5000, 30
 
 # setup logger
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ def run_one_sim(norm_control=True, baseline=False):
 
     X_full = torch.normal(mean=torch.zeros(n, D), std=torch.ones(n, D)).cuda()
 
-    for d in range(10, D+1, 10):
+    for d in range(3, D+1):
         X = X_full[:, :d] * (1 / np.sqrt(d))
 
         test_split_size = 0.2
@@ -100,7 +100,7 @@ def generate_plots(train_MSEs, test_MSEs):
     test_MSE_mean = test_MSEs.mean(axis=0)
 
     # plot of train and test MSEs
-    d_range = list(range(10, D+1, 10))
+    d_range = list(range(3, D+1))
     d_range_exploded = np.repeat(d_range, train_MSEs.shape[0])
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 9))
