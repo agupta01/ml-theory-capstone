@@ -7,7 +7,8 @@ from typing import Tuple, Union
 import numpy as np, math
 import nltk
 import torch
-import cupy as cp
+
+# import cupy as cp
 
 n, noise_std, gamma, p, lam = 50, 0.1, 10, 8, 1e-8
 
@@ -129,6 +130,7 @@ def grad_laplace_mat_opt(X, sol, L, P, batch_size=2, norm_control=False, **kwarg
     return M
 
 
+'''
 def grad_laplace_mat_cupy(X, sol, L, P, batch_size=2, norm_control=False, **kwargs):
     """
     Optimized gradient calculation done with einsum notation.
@@ -170,6 +172,7 @@ def grad_laplace_mat_cupy(X, sol, L, P, batch_size=2, norm_control=False, **kwar
     M = cp.einsum("mcd, mcD -> dD", G, G) / len(G)
 
     return M
+'''
 
 
 def K_M_grad(x, z, M, L):

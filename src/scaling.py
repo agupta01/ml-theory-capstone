@@ -1,20 +1,17 @@
-import argparse
 import logging
+import os
 
+import fire
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import torch
 from tqdm import trange
 
-from src.utils import K_M, mse, K_laplace_mat
-from src.rfm import RFM
+from rfm import RFM
 
 # set dpi for plots
 plt.rcParams["figure.dpi"] = 300
-
-# regularization parameter
-_lambda = 1e-3
 
 # train test split
 split_size = 0.2
@@ -38,31 +35,59 @@ f = lambda X: (
     # + torch.normal(mean=torch.zeros(X.shape[0]), std=torch.ones(X.shape[0])).cuda()
 ).reshape(-1, 1)
 
+sinf = lambda X: (X[:, 2] * torch.sin(X[:, 0] * X[:, 1])).reshape(-1, 1)
 
-def run_one_sim(norm_control=True, baseline=False):
+true_K = torch.randn((10, 1), requires_grad=False, device="cuda")
+randmat = lambda X: torch.matmul(X[:, :10], true_K[: X.shape[1], :]).reshape(-1, 1)
+
+TARGET_FNS = {
+    "cubic": f,
+    "sinf": sinf,
+    "randmat": randmat,
+}
+
+
+def run_one_sim(
+    N=1000, noise=0.0, target_fn="cubic", norm_control=False, baseline=False
+):
     train_MSE = []
     test_MSE = []
     mse_hist = []
 
+    D = 2 * N
+    X_full = torch.normal(
+        mean=0.0, std=1.0, size=(N, D), requires_grad=False, device="cuda"
+    )
+    epsilon = torch.normal(
+        mean=0.0, std=noise, size=(N,), requires_grad=False, device="cuda"
+    )
 
-    X_full = torch.normal(mean=torch.zeros(n, D), std=torch.ones(n, D)).cuda()
+    d_range = np.concatenate(
+        (np.arange(5, int(0.1 * N), 1), np.arange(int(0.1 * N), D + 1, 10))
+    )
 
-    for d in range(10, D+1, 10):
+    for d in d_range:
         X = X_full[:, :d] * (1 / np.sqrt(d))
 
         test_split_size = 0.2
-        n_test_split = int(n * test_split_size)
+        n_test_split = int(N * test_split_size)
 
         X_train, X_test = (
-            X[: n - n_test_split],
-            X[n - n_test_split :],
+            X[: N - n_test_split],
+            X[N - n_test_split :],
         )
 
         # recompute y
-        y_train = f(X_train)
-        y_test = f(X_test)
+        y_train = TARGET_FNS[target_fn](X_train) + epsilon[: N - n_test_split].reshape(
+            -1, 1
+        )
+        y_test = TARGET_FNS[target_fn](X_test) + epsilon[N - n_test_split :].reshape(
+            -1, 1
+        )
 
-        model = RFM(backend="gpu", norm_control=norm_control, T=10 if not baseline else 0)
+        model = RFM(
+            backend="gpu", norm_control=norm_control, T=10 if not baseline else 0
+        )
         mse_hist.append(
             model.fit(
                 X_train,
@@ -76,22 +101,47 @@ def run_one_sim(norm_control=True, baseline=False):
     return np.array(train_MSE), np.array(test_MSE)
 
 
-def run_sim(N_runs=10, norm_control=True, baseline=False, plot=True):
+def run_sim(name="", N_runs=10, noise=0.0, N=1000, target_fn="cubic", baseline=False):
     train_MSEs = []
     test_MSEs = []
 
+    logger.info(
+        f"Running with parameters: {name}, {N_runs}, {noise}, {N}, {target_fn}, {baseline}"
+    )
+
     for i in trange(N_runs):
-        train_MSE, test_MSE = run_one_sim(norm_control, baseline)
+        train_MSE, test_MSE = run_one_sim(
+            N=N, noise=noise, target_fn=target_fn, baseline=baseline
+        )
         train_MSEs.append(train_MSE)
         test_MSEs.append(test_MSE)
 
     train_MSEs = np.array(train_MSEs)
     test_MSEs = np.array(test_MSEs)
 
-    if plot:
-        generate_plots(train_MSEs, test_MSEs)
+    # save results
+    logging.info("Saving Results...")
+    if name == "":
+        name = f"{N_runs}runs_{N}N_{noise}noise_{target_fn}"
+    baseline_str = "_baseline" if baseline else ""
 
-    return (train_MSEs, test_MSEs)
+    # change current dir if needed
+    if os.getcwd().endswith("src"):
+        os.chdir("..")
+    # check if results folder exists, if not, create it
+    if not os.path.exists("./results/arrays/scaling_results"):
+        os.makedirs("./results/arrays/scaling_results")
+
+    np.save(
+        f"./results/arrays/scaling_results/train_MSEs_{name}{baseline_str}.npy",
+        train_MSEs,
+    )
+    np.save(
+        f"./results/arrays/scaling_results/test_MSEs_{name}{baseline_str}.npy",
+        test_MSEs,
+    )
+
+    return
 
 
 def generate_plots(train_MSEs, test_MSEs):
@@ -100,7 +150,7 @@ def generate_plots(train_MSEs, test_MSEs):
     test_MSE_mean = test_MSEs.mean(axis=0)
 
     # plot of train and test MSEs
-    d_range = list(range(10, D+1, 10))
+    d_range = list(range(10, D + 1, 10))
     d_range_exploded = np.repeat(d_range, train_MSEs.shape[0])
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 9))
@@ -137,25 +187,10 @@ def generate_plots(train_MSEs, test_MSEs):
     plt.savefig("./results/plots/train_test_MSE.png")
 
 
+# if __name__ == "__main__":
+#     run_one_sim(N=200, noise=0.1, target_fn="cubic", norm_control=False, baseline=False)
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--N_runs", type=int, default=10)
-    parser.add_argument("--norm_control", type=str, default="true")
-    parser.add_argument("--plot", type=bool, default=True)
-    args = parser.parse_args()
-
-    args.norm_control = args.norm_control.lower() == "true"
-
-    logging.info(f"Running {args.N_runs} runs")
-    logging.info(f"norm_control: {args.norm_control}")
-
-    train_MSEs, test_MSEs, M_norms, stdevs = run_sim(
-        args.N_runs, args.norm_control, args.plot
-    )
-
-    used_M_norm = "_norm_control" if args.norm_control else ""
-
-    np.save(f"./results/arrays/train_MSEs{used_M_norm}_{str(args.N_runs)}.npy", train_MSEs)
-    np.save(f"./results/arrays/test_MSEs{used_M_norm}_{str(args.N_runs)}.npy", test_MSEs)
+    fire.Fire(run_sim)
 
     logging.info("Done.")

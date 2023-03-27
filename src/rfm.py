@@ -4,9 +4,9 @@ import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-from . import utils
-from . import gpu_utils
-from .etl import TARGET_FNS
+import utils
+import gpu_utils
+from etl import TARGET_FNS
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ class RFM:
             # cnvert to torch tensor if necessary
             if not isinstance(X, torch.Tensor):
                 X = torch.from_numpy(X).to(self.device).float()
-            
+
             return gpu_utils.K_M(X, self.X_, self.M_, self.L) @ self.alpha_
         else:
             return utils.K_M(X, self.X_, self.M_, self.L, self.power) @ self.alpha_
@@ -89,7 +89,7 @@ class RFM:
     def score(self, X, y) -> float:
         if isinstance(y, torch.Tensor):
             y = y.cpu().numpy()
-        if self.backend == 'gpu':
+        if self.backend == "gpu":
             return utils.mse(y, self.predict(X).cpu().numpy())
         else:
             return utils.mse(y, self.predict(X))
