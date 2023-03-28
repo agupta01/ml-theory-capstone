@@ -1,0 +1,10 @@
+name: huggingface
+channels:
+  - defaults
+dependencies:
+  - python=3.8
+  - cudatoolkit
+  - cudnn
+  - ipykernel
+  - numba
+prefix: /home/arunavgupta/anaconda3/envs/huggingface

@@ -8,7 +8,12 @@ If you would like to run the expriments used in the report "On Feature Scaling o
 2. Navigate to `src` within the project root (`cd src`)
 3. Run the following:
 ```shell
-python scaling.py --name=<PROVIDE A NAME HERE> --noise=<specify noise to add to dataset here> --N_runs=<set to 100 for 100 trials> --N=<number of examples in dataset> --target_fn=<cubic for the default function, randmat for the random matrix function> --baseline=<True to run baseline (Laplacian) kernel, False to train full RFM)
+python scaling.py --name=<PROVIDE A NAME HERE> \
+	--noise=<specify noise to add to dataset here> \
+	--N_runs=<set to 100 for 100 trials> \
+	--N=<number of examples in dataset> \
+	--target_fn=<cubic for the default function, randmat for the random matrix function> \
+	--baseline=<True to run baseline (Laplacian) kernel, False to train full RFM)
 ```
 4. After the experiment is run (100 trials takes about 30 minutes when N=1000 on a RTX 2060), you can find result files in `<project root>/results/arrays/scaling_results`. Every run will generate two numpy arrays, named `train_MSEs_<name>.npy` and `test_MSEs_<name>.npy`, appended with "\_baseline" if a baseline run was used. Each array has shape (N_runs, len(d_range)), where d_range are the feature sizes attempted ([5, 6, 7, ..., 99] + [100, 110, 120, ..., 2000] in the base experiment in the original paper).
 
